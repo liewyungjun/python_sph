@@ -1,6 +1,8 @@
 import math 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from matplotlib.patches import Rectangle
+
 import numpy as np
 import random
 import time
@@ -19,6 +21,10 @@ gravity = 10.0
 deltaTime = 0.02
 velocities = [(0.0,0.0) for x in range(numParticles)]
 plotSize = 30.0
+global plotFloor 
+plotFloor = -plotSize
+obstacleList = [[(-5,-4),(8,-4),(8,-8),(-5,-8)]]
+rectangles = []
 
 gravityOn = False
 save = False
@@ -37,7 +43,7 @@ for i in range(gridSize):
 #print(particleList)
 ##############################################
         
-predictedPositions = particleList
+predictedPositions = particleList.copy()
 
 def smoothingKernel(radius,dist):
     if dist > radius:
@@ -90,11 +96,62 @@ def calculatePressureForce(particleIndex):
         pressureForce = (pressureForce[0] + densityToPressure(sharedPressure) * dirx * slope * mass / density, pressureForce[1] + densityToPressure(sharedPressure) * diry * slope * mass / density)
     return pressureForce
 
+def resolveCollisions(pos,posIdx,obstacles):
+    # Check for collision with side walls
+    if abs(pos[0]) > plotSize:
+        # if i == 2 and debug:
+        #     print(f"{i} touch wall")
+        velocities[posIdx] = (-velocities[posIdx][0]* collisionDamping,velocities[posIdx][1]) 
+        pos[0] = particleList[posIdx][0] + velocities[posIdx][0] * deltaTime
+    # Check for collision with ground and top
+    if (pos[1]) < plotFloor or pos[1] > plotSize:
+        # if i == 2 and debug:
+        #     print(f"{i} touch ground")
+        #     print(f'y: {particleList[i][1]} + {velocities[i][1]} * {deltaTime} = {pos[1]}')
+        #     print(f'changing from {velocities[i][1]} to {-velocities[i][1] * collisionDamping}')
+        velocities[posIdx] = (velocities[posIdx][0],-velocities[posIdx][1] * collisionDamping)        
+        pos[1] = particleList[posIdx][1] + velocities[posIdx][1] * deltaTime
+
+    for i in obstacles:
+        precollisionx = particleList[posIdx][0]>i[0][0] and particleList[posIdx][0]<i[1][0]
+        precollisiony = particleList[posIdx][1]<i[0][1] and particleList[posIdx][1]>i[3][1]
+        collisionx = pos[0]>i[0][0] and pos[0]<i[1][0]
+        collisiony = pos[1]<i[0][1] and pos[1]>i[3][1]
+        if posIdx == 1:
+            print(f'{posIdx} pre x due to {particleList[posIdx][0]} > {i[0][0]} and {particleList[posIdx][0]} < {i[1][0]}')
+            print(f'{posIdx} pre y due to {particleList[posIdx][1]} < {i[0][1]} and {particleList[posIdx][1]} > {i[3][1]}')
+        if collisionx and collisiony:
+            # print(f'{posIdx}: collision!>>>>>>>>>>>>>>>>>>')
+            # print(f'{posIdx} pre x is {precollisionx} and pre y is {precollisiony}')
+            # print(f'{posIdx} pre x due to {particleList[posIdx][0]} > {i[0][0]} and {particleList[posIdx][0]} < {i[1][0]}')
+            # print(f'{posIdx} pre y due to {particleList[posIdx][1]} < {i[0][1]} and {particleList[posIdx][1]} > {i[3][1]}')
+            #inside rectangle
+            if not precollisionx and precollisiony:
+                print(f'{posIdx}: not pre x but pre y!')
+            #if collisionx:
+                velocities[posIdx] = (-velocities[posIdx][0]* collisionDamping,velocities[posIdx][1]) 
+                pos[0] = particleList[posIdx][0] + velocities[posIdx][0] * deltaTime
+            if precollisionx and not precollisiony:
+                print(f'{posIdx}: not pre y but pre x!')
+            #if collisiony:
+                velocities[posIdx] = (velocities[posIdx][0],-velocities[posIdx][1] * collisionDamping)        
+                pos[1] = particleList[posIdx][1] + velocities[posIdx][1] * deltaTime
+    if posIdx == 1:
+        print(f'moving from {particleList[posIdx]} to {pos}')
+    return (pos[0],pos[1])
+
+
+### ANIMATION CODE ##############################################################
 # Set up the figure and axis
 fig, ax = plt.subplots(figsize=(plotSize/4, plotSize/4))  # This scales the window size with plotSize
 ax.set_xlim([-plotSize, plotSize])
 ax.set_ylim([-plotSize, plotSize])
 ax.set_aspect('equal')
+
+for obstacle in obstacleList:
+    rect = Rectangle((obstacle[3][0], obstacle[3][1]), obstacle[1][0] - obstacle[0][0],obstacle[0][1] - obstacle[3][1], fill=True, facecolor='gray')
+    ax.add_patch(rect)
+    rectangles.append(rect)
 
 # Initialize the balls
 ballaxs = []
@@ -106,9 +163,9 @@ def update_sim():
     for i in range(numParticles):#add gravity
         velocities[i] = (velocities[i][0], velocities[i][1] -gravity * deltaTime )
         predictedPositions[i] = (particleList[i][0] + velocities[i][0] * deltaTime, particleList[i][1] + velocities[i][1] * deltaTime)
-
+    
     updateDensities() #update densities
-
+    
     for i in range(numParticles): #update velocities
         pf = calculatePressureForce(i)
         pa = (pf[0]/densities[i],pf[1]/densities[i]) #pressure acceleration
@@ -118,40 +175,28 @@ def update_sim():
             velocities[i] = (velocities[i][0] + pa[0] * deltaTime, velocities[i][1] + pa[1] * deltaTime )
         else: #direct acceleration assignment + bodyforce
             velocities[i] = (pa[0] * deltaTime + bodyforce[0], pa[1] * deltaTime + bodyforce[1])
-        
-    
+        ###TODO fix gravity, as direct assignment does not work for obstacles
     for i in range(numParticles): #update positions
         newi =[particleList[i][0] + velocities[i][0] * deltaTime, particleList[i][1] + velocities[i][1] * deltaTime]
-        
-        # Check for collision with side walls
-        if abs(newi[0]) > plotSize:
-            if i == 2 and debug:
-                print(f"{i} touch wall")
-            velocities[i] = (-velocities[i][0]* collisionDamping,velocities[i][1]) 
-            newi[0] = particleList[i][0] + velocities[i][0] * deltaTime
-        
-        # Check for collision with ground and top
-        if abs(newi[1]) > plotSize:
-            if i == 2 and debug:
-                print(f"{i} touch ground")
-                print(f'y: {particleList[i][1]} + {velocities[i][1]} * {deltaTime} = {newi[1]}')
-                print(f'changing from {velocities[i][1]} to {-velocities[i][1] * collisionDamping}')
-            velocities[i] = (velocities[i][0],-velocities[i][1] * collisionDamping)        
-            newi[1] = particleList[i][1] + velocities[i][1] * deltaTime
-        if i == 2 and debug:
-            print(f'{i} velocity is {velocities[i]}')
-        particleList[i] = (newi[0],newi[1])
+        if i == 1:
+            print(f'testing to move from {particleList[i]} to {newi}')
+        particleList[i] = resolveCollisions(newi,i,obstacleList)
+        if i == 1:
+            print(f'Particle Location is now {particleList[i]}')
 
 def update(frame):
     # Update position and velocity for both balls
     update_sim()
-    print("densities table")
-    for i in range(len(densities)):
-        print(f'{i}: {densities[i]}')
+    # print("densities table")
+    # for i in range(len(densities)):
+    #     print(f'{i}: {densities[i]}')
     #update ball loc 
     for i in range(len(ballaxs)):
-        ballaxs[i].set_data(particleList[i][0],particleList[i][1])
+        ballaxs[i].set_data([particleList[i][0]],[particleList[i][1]])
     print(f'{frame}----------------')
+    if frame > 50:
+        global plotFloor
+        plotFloor +=0.1
     return ballaxs
 
 # Create the animation
