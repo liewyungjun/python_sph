@@ -6,11 +6,11 @@ import random
 import time
 
 simulationsteps = 2000
-numParticles = 64
+numParticles = 49
 densities= [0.0 for i in range(numParticles)]
 particleList = []
-gridLength = 15.0
-pressureMultiplier = 30
+gridLength = 30.0
+pressureMultiplier = 20
 targetDensity = 0.00003
 mass = 1.0
 smoothingRadius = 20.0
@@ -18,12 +18,13 @@ collisionDamping = 0.2
 gravity = 10.0
 deltaTime = 0.02
 velocities = [(0.0,0.0) for x in range(numParticles)]
-plotSize = 20.0
+plotSize = 30.0
 
 gravityOn = False
 save = False
 savename = "test.mp4"
 bodyforce = (0,-20.0)
+debug = False
 
 ############particle generation################
 gridSize = int(math.sqrt(numParticles))
@@ -35,7 +36,9 @@ for i in range(gridSize):
         particleList.append((x, y))
 #print(particleList)
 ##############################################
- 
+        
+predictedPositions = particleList
+
 def smoothingKernel(radius,dist):
     if dist > radius:
         return 0
@@ -50,10 +53,8 @@ def smoothingKernelDerivative(radius,dist):
     
 def calculateDensity(point):
     density = 0.0
-    for i in range(len(particleList)): #except youtself
-        dist = math.dist(particleList[point],particleList[i])
-        #if dist < smoothingRadius:
-            #print(dist)
+    for i in range(numParticles): #except youtself
+        dist = math.dist(predictedPositions[point],predictedPositions[i])
         influence = smoothingKernel(smoothingRadius,dist)
         density += mass * influence
     if density < 1e-7:
@@ -87,69 +88,59 @@ def calculatePressureForce(particleIndex):
         density = densities[i]
         sharedPressure = calculateSharedPressure(density,densities[particleIndex])
         pressureForce = (pressureForce[0] + densityToPressure(sharedPressure) * dirx * slope * mass / density, pressureForce[1] + densityToPressure(sharedPressure) * diry * slope * mass / density)
-        # if abs(sum(pressureForce))<1e-7:
-        #print(f'{particleIndex} to {i} densityToPressue:{densityToPressure(density):.5f}  dirx:{dirx:.5f} slope: {slope:.5f} density:{density:.5f} dist:{dist:.5f}')
-        #print(f'pf:{pressureForce}')
-        #print(f'{particleIndex} - {i}')
-    # if abs(sum(pressureForce))<1e-7:
-    #     print(f'{particleIndex} has no pf')
-    # else:
-    #     print(f'{particleIndex} has pf {pressureForce}')
-        
     return pressureForce
 
-
-
 # Set up the figure and axis
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(plotSize/4, plotSize/4))  # This scales the window size with plotSize
 ax.set_xlim([-plotSize, plotSize])
 ax.set_ylim([-plotSize, plotSize])
 ax.set_aspect('equal')
-ax.figure(figsize=(10,6))
 
 # Initialize the balls
 ballaxs = []
 for i in range(numParticles):
-    ballaxs.append(ax.plot([], [], 'bo', markersize=1)[0])
+    ballaxs.append(ax.plot([], [], 'bo', markersize=10)[0])
 
 def update_sim():
 
-    updateDensities() #update densities
-    for i in range(len(particleList)):
-        velocities[i]  = (velocities[i][0],velocities[i][1] - gravity * deltaTime)
-    #print(densities)
+    for i in range(numParticles):#add gravity
+        velocities[i] = (velocities[i][0], velocities[i][1] -gravity * deltaTime )
+        predictedPositions[i] = (particleList[i][0] + velocities[i][0] * deltaTime, particleList[i][1] + velocities[i][1] * deltaTime)
 
-    for i in range(len(particleList)): #update velocities
+    updateDensities() #update densities
+
+    for i in range(numParticles): #update velocities
         pf = calculatePressureForce(i)
-        # if abs(sum(pf))<1e-7:
-        #     print(f'{i} no pressure force with {sum(pf)}')
         pa = (pf[0]/densities[i],pf[1]/densities[i]) #pressure acceleration
-        #velocities[i] = (velocities[i][0] + pa[0] * deltaTime, velocities[i][1] + pa[1] * deltaTime  - gravity * deltaTime)
-        if gravityOn:
-            velocities[i] = (velocities[i][0] + pa[0] * deltaTime, velocities[i][1] + pa[1] * deltaTime)
-        else:
+        if i == 2 and debug:
+            print(f'{i}: {velocities[i][1]} + ({pa[1]} - {gravity}) * {deltaTime}')
+        if gravityOn: #add pressure acceleration
+            velocities[i] = (velocities[i][0] + pa[0] * deltaTime, velocities[i][1] + pa[1] * deltaTime )
+        else: #direct acceleration assignment + bodyforce
             velocities[i] = (pa[0] * deltaTime + bodyforce[0], pa[1] * deltaTime + bodyforce[1])
-        print(f'{i} velocity is {velocities[i]}')
-        #if abs(sum(velocities[i]))<1e-7:
-            #print(f'{i} not moving')
+        
     
-    for i in range(len(particleList)): #update positions
+    for i in range(numParticles): #update positions
         newi =[particleList[i][0] + velocities[i][0] * deltaTime, particleList[i][1] + velocities[i][1] * deltaTime]
         
-        # Check for collision with and top
+        # Check for collision with side walls
         if abs(newi[0]) > plotSize:
+            if i == 2 and debug:
+                print(f"{i} touch wall")
             velocities[i] = (-velocities[i][0]* collisionDamping,velocities[i][1]) 
             newi[0] = particleList[i][0] + velocities[i][0] * deltaTime
-            #vy[-1] = -collisionDamping * vy[-1]
         
-        # Check for collision with walls
+        # Check for collision with ground and top
         if abs(newi[1]) > plotSize:
+            if i == 2 and debug:
+                print(f"{i} touch ground")
+                print(f'y: {particleList[i][1]} + {velocities[i][1]} * {deltaTime} = {newi[1]}')
+                print(f'changing from {velocities[i][1]} to {-velocities[i][1] * collisionDamping}')
             velocities[i] = (velocities[i][0],-velocities[i][1] * collisionDamping)        
             newi[1] = particleList[i][1] + velocities[i][1] * deltaTime
-            #vx[-1] = -collisionDamping * vx[-1]
-
+        if i == 2 and debug:
+            print(f'{i} velocity is {velocities[i]}')
         particleList[i] = (newi[0],newi[1])
-    #time.sleep(2)
 
 def update(frame):
     # Update position and velocity for both balls
@@ -160,7 +151,7 @@ def update(frame):
     #update ball loc 
     for i in range(len(ballaxs)):
         ballaxs[i].set_data(particleList[i][0],particleList[i][1])
-    print(frame)
+    print(f'{frame}----------------')
     return ballaxs
 
 # Create the animation
