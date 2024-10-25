@@ -7,7 +7,7 @@ class SPH:
     def __init__(self,particleList,obstacleList,numParticles,plotSize,plotFloor,\
                 ratio,debug,floodRising,gravityOn,pressureMultiplier,targetDensity,\
                 smoothingRadius, collisionDamping,mass,gravity,deltaTime,velDamp,\
-                bodyforce,plotFloorSpeed):
+                bodyforce,plotFloorSpeed,viscosityStrength):
         self.particleList = particleList
         self.numParticles = numParticles
         self.obstacleList = obstacleList
@@ -25,6 +25,7 @@ class SPH:
         self.velDamp = velDamp
         self.bodyforce = bodyforce
         self.plotFloorSpeed = plotFloorSpeed
+        self.viscosityStrength = viscosityStrength
         
         #simulation params
         self.plotSize = plotSize
@@ -41,9 +42,8 @@ class SPH:
     def smoothingKernel(self,radius,dist):
         if dist > radius:
             return 0
-        volume = math.pi * pow(radius,8)/4
-        value = max(0,radius * radius - dist * dist)
-        return value * value * value / volume
+        volume = math.pi * pow(radius,4)/6
+        return ((radius-dist) * (radius-dist))/ volume
 
     def smoothingKernelDerivative(self,radius,dist):
         if dist > radius:
@@ -105,8 +105,11 @@ class SPH:
         # Check for collision with ground and top
         if (pos[1]) < self.plotFloor or pos[1] > self.ratio[1]*self.plotSize:
             if self.gravityOn:
-                self.velocities[posIdx] = (self.velocities[posIdx][0],-self.velocities[posIdx][1] * self.collisionDamping)        
-                pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
+                if self.velocities[posIdx][1]>0 and (pos[1]) < self.plotFloor:
+                    pos[1] = pos[1]
+                else:
+                    self.velocities[posIdx] = (self.velocities[posIdx][0],-self.velocities[posIdx][1] * self.collisionDamping)        
+                    pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
             else:
                 pos[1] = self.particleList[posIdx][1]
             if self.floodRising and pos[1] < self.plotFloor: #below flood level
@@ -135,7 +138,24 @@ class SPH:
                     else:
                         pos[1] = self.particleList[posIdx][1]
         return (pos[0],pos[1])
-
+    
+    def viscositySmoothingKernel(self,radius,dist):
+        if dist > radius:
+            return 0
+        volume = math.pi * pow(radius,8)/4
+        rd = radius * radius - dist * dist
+        return (rd * rd * rd)/ volume
+    
+    def calculateViscosityForce(self,particleIndex):
+        viscosityForce = (0.0,0.0)
+        position = self.particleList[particleIndex]
+        for i in range(self.numParticles): #except youtself
+            dist = math.dist(self.particleList[i],self.particleList[particleIndex])
+            influence = self.viscositySmoothingKernel(self.smoothingRadius,dist)
+            temp = ((self.velocities[i][0] - self.velocities[particleIndex][0]) * influence,(self.velocities[i][1] - self.velocities[particleIndex][1]) * influence)
+            viscosityForce = (viscosityForce[0] + temp[0],viscosityForce[1] + temp[1])
+        return (viscosityForce[0] * self.viscosityStrength,viscosityForce[1] * self.viscosityStrength)
+    
     def step(self):
 
         for i in range(self.numParticles):#add gravity
@@ -148,8 +168,10 @@ class SPH:
         for i in range(self.numParticles): #update velocities
             pf = self.calculatePressureForce(i)
             pa = (pf[0]/self.densities[i],pf[1]/self.densities[i]) #pressure acceleration
+            vf = self.calculateViscosityForce(i)
             if self.gravityOn: #add pressure acceleration
-                self.velocities[i] = (self.velDamp * self.velocities[i][0] + pa[0] * self.deltaTime, self.velDamp * self.velocities[i][1] + pa[1] * self.deltaTime )
+                self.velocities[i] = (self.velDamp * self.velocities[i][0] + pa[0] * self.deltaTime + vf[0] * self.deltaTime,\
+                                      self.velDamp * self.velocities[i][1] + pa[1] * self.deltaTime + vf[1] * self.deltaTime)
             else: #direct acceleration assignment + bodyforce
                 self.velocities[i] = (pa[0] * self.deltaTime + self.bodyforce[0], pa[1] * self.deltaTime + self.bodyforce[1])
             ###TODO fix gravity, as direct assignment does not work for obstacles
