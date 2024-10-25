@@ -9,29 +9,29 @@ import numpy as np
 simulationsteps = 2200
 particleMarkerSize = 2 #size of particle in axes units
 plotSize = 50.0
-ratio = (3,4) #ratio of plot size
+ratio = (2,4) #ratio of plot size
 axesScaling = 10 #size of axes scaling factor e.g. 10 units/axesScaling = plot cm size
-floodRisingFrameStart = 500
+floodRisingFrameStart = 300
 plotFloor = 0.0
 plotFloorSpeed = 0.1
 
 #Simulation physics setup
 obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)]]
-numParticles = 100
+numParticles = 49
 floodRising = True
-gravityOn = False
+gravityOn = True
 
-pressureMultiplier = 12
-#targetDensity = 12.0e-7
-targetDensity = 2.0e-5
+#pressureMultiplier = 300
+pressureMultiplier = 50
+targetDensity = 0.002
 smoothingRadius = 20.0
 collisionDamping = 0.8
 mass = 1.0
 gravity = 10.0
 deltaTime = 0.02
 velDamp = 1.0
-#bodyforce = (0,-20.0)
-bodyforce = (0,0)
+bodyforce = (0,-20.0)
+#bodyforce = (0,0)
 
 #Tools
 save = False
@@ -41,7 +41,7 @@ particleList = []
 rectangles = []
 
 def generateParticleGrid(numParticles):#particle generation
-    particleGridLength = plotSize/2
+    particleGridLength = plotSize*ratio[0] * 0.8
     gridSize = int(math.sqrt(numParticles))
     if gridSize == 0 or gridSize == 1:
         gridSize = numParticles
@@ -49,7 +49,7 @@ def generateParticleGrid(numParticles):#particle generation
         spacing = particleGridLength
     else:
         spacing = particleGridLength / (gridSize - 1)
-    offset = ((ratio[0] * plotSize)/2, (ratio[1] * plotSize)/2)
+    offset = (plotSize*ratio[0] * 0.1,0)
     if gridSize == numParticles:
         print("small case")
         for i in range(gridSize):
@@ -96,7 +96,7 @@ for obstacle in obstacleList:
 # Initialize the balls
 ballaxs = []
 for i in range(numParticles):
-    ballaxs.append(ax.plot([], [], 'bo', markersize=markersize)[0])
+    ballaxs.append(ax.plot([], [], 'b^', markersize=markersize)[0])
 floorLine = ax.axhline(y=SPHObject.plotFloor, color='red', linestyle='-')
 
 def update(frame):
@@ -112,6 +112,8 @@ def update(frame):
     if frame > floodRisingFrameStart and floodRising:
         SPHObject.plotFloor +=plotFloorSpeed
         floorLine.set_ydata([SPHObject.plotFloor, SPHObject.plotFloor])
+    if frame > floodRisingFrameStart and not floodRising:
+        SPHObject.bodyforce = (-bodyforce[0],-bodyforce[1])
 
     return ballaxs + [floorLine]
     #return ballaxs 
