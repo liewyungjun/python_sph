@@ -43,7 +43,7 @@ class SPH:
             return 0
         volume = math.pi * pow(radius,8)/4
         value = max(0,radius * radius - dist * dist)
-        return value * value / volume
+        return value * value * value / volume
 
     def smoothingKernelDerivative(self,radius,dist):
         if dist > radius:
@@ -56,6 +56,8 @@ class SPH:
             dist = math.dist(self.predictedPositions[point],self.predictedPositions[i])
             influence = self.smoothingKernel(self.smoothingRadius,dist)
             density += self.mass * influence
+            # if influence >0:
+            #     print(f'density contribution to {point} of {i} is {influence} with distance {dist}')
         if density < 1e-7:
             print(f"{point} density zero")
         return density
