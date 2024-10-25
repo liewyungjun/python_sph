@@ -7,7 +7,7 @@ class SPH:
     def __init__(self,particleList,obstacleList,numParticles,plotSize,plotFloor,\
                 ratio,debug,floodRising,gravityOn,pressureMultiplier,targetDensity,\
                 smoothingRadius, collisionDamping,mass,gravity,deltaTime,velDamp,\
-                bodyforce):
+                bodyforce,plotFloorSpeed):
         self.particleList = particleList
         self.numParticles = numParticles
         self.obstacleList = obstacleList
@@ -24,6 +24,7 @@ class SPH:
         self.deltaTime = deltaTime
         self.velDamp = velDamp
         self.bodyforce = bodyforce
+        self.plotFloorSpeed = plotFloorSpeed
         
         #simulation params
         self.plotSize = plotSize
@@ -106,9 +107,9 @@ class SPH:
                 pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
             else:
                 pos[1] = self.particleList[posIdx][1]
-            if self.floodRising and pos[1] < self.plotFloor:
+            if self.floodRising and pos[1] < self.plotFloor: #below flood level
                 #pos[1] = self.plotFloor
-                pos[1] += 0.2
+                pos[1] += self.plotFloorSpeed * 3
 
         for i in obstacles:
             precollisionx = self.particleList[posIdx][0]>i[0][0] and self.particleList[posIdx][0]<i[1][0]

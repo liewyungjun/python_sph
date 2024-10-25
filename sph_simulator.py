@@ -13,22 +13,25 @@ ratio = (3,4) #ratio of plot size
 axesScaling = 10 #size of axes scaling factor e.g. 10 units/axesScaling = plot cm size
 floodRisingFrameStart = 500
 plotFloor = 0.0
+plotFloorSpeed = 0.1
 
 #Simulation physics setup
 obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)]]
-numParticles = 49
+numParticles = 100
 floodRising = True
 gravityOn = False
 
 pressureMultiplier = 12
-targetDensity = 12.0e-7
+#targetDensity = 12.0e-7
+targetDensity = 2.0e-5
 smoothingRadius = 20.0
 collisionDamping = 0.8
 mass = 1.0
 gravity = 10.0
 deltaTime = 0.02
 velDamp = 1.0
-bodyforce = (0,-20.0)
+#bodyforce = (0,-20.0)
+bodyforce = (0,0)
 
 #Tools
 save = False
@@ -64,8 +67,8 @@ generateParticleGrid(numParticles)
 SPHObject = sph.SPH(particleList=particleList,obstacleList=obstacleList,numParticles=numParticles,plotSize=plotSize,plotFloor=plotFloor,\
                     debug=debug,ratio=ratio,gravityOn=gravityOn,floodRising=floodRising,\
                     pressureMultiplier=pressureMultiplier,targetDensity=targetDensity,\
-                    collisionDamping=collisionDamping,mass=mass,gravity=gravity,deltaTime=deltaTime,\
-                    velDamp=velDamp,bodyforce=bodyforce)
+                    smoothingRadius=smoothingRadius,collisionDamping=collisionDamping,mass=mass,gravity=gravity,deltaTime=deltaTime,\
+                    velDamp=velDamp,bodyforce=bodyforce,plotFloorSpeed=plotFloorSpeed)
 
 
 ### ANIMATION CODE ##############################################################
@@ -107,7 +110,7 @@ def update(frame):
         ballaxs[i].set_data([SPHObject.particleList[i][0]],[SPHObject.particleList[i][1]])
     print(f'{frame}----------------')
     if frame > floodRisingFrameStart and floodRising:
-        SPHObject.plotFloor +=0.1
+        SPHObject.plotFloor +=plotFloorSpeed
         floorLine.set_ydata([SPHObject.plotFloor, SPHObject.plotFloor])
 
     return ballaxs + [floorLine]
