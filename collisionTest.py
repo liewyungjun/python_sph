@@ -3,37 +3,44 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 import math
 
-obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)],[(10,30),(30,50),(50,30),(30,10),(10,10)]]
-point = (35,119.9)
+#obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)],[(10,30),(30,50),(50,30),(30,10),(10,10)],[(100,80),(120,110),(130,100)]]
+#obstacleList = [[(20,50),(100,110),(130,110),(50,50)]]
+obstacleList = [[(90,80),(50,20),(90,130)],[(20,50),(100,110),(130,110),(50,50)]]
+point = (65,50)
 
 def calculateEdgeNormals():
     res = []
     for obstacle in obstacleList:
         edgenormals = []
-        edgenormals.append(((obstacle[1][0] - obstacle[0][0]),(obstacle[1][1] - obstacle[0][1])))
-        edgenormals.append(((obstacle[2][0] - obstacle[1][0]),(obstacle[2][1] - obstacle[1][1])))
-        edgenormals.append(((obstacle[3][0] - obstacle[2][0]),(obstacle[3][1] - obstacle[2][1])))
-        edgenormals.append(((obstacle[0][0] - obstacle[3][0]),(obstacle[0][1] - obstacle[3][1])))
+        for vertices in range(len(obstacle)):
+            if vertices != len(obstacle)-1:
+                edgenormals.append((-(obstacle[vertices+1][1] - obstacle[vertices][1]),(obstacle[vertices+1][0] - obstacle[vertices][0])))
+                #edgenormals.append(((obstacle[vertices+1][0] - obstacle[vertices][0]),(obstacle[vertices+1][1] - obstacle[vertices][1])))
+            else:
+                edgenormals.append((-(obstacle[0][1] - obstacle[vertices][1]),(obstacle[0][0] - obstacle[vertices][0])))
+                #edgenormals.append(((obstacle[0][0] - obstacle[vertices][0]),(obstacle[0][1] - obstacle[vertices][1])))
         res.append(edgenormals)
+    print(res)
     return res
 
 obstacleEdgeNormals = calculateEdgeNormals()
 
+
 def detectCollision():
     for i in range(len(obstacleEdgeNormals)): #for each obstacle
         collision = True
+        print(f'checking {len(obstacleEdgeNormals[i])} normals')
+        mindot = 999
+        maxdot = -999
         for j in range(len(obstacleEdgeNormals[i])): #for each obstacle normal
             pointdot = np.dot(point,obstacleEdgeNormals[i][j])
-            #print(f'point:{point} edgenormal:{obstacleEdgeNormals[i][j]}')
-            edgedot1 = np.dot(obstacleList[i][j],obstacleEdgeNormals[i][j])
-            if j == len(obstacleEdgeNormals[i])-1:
-                edgedot2 = np.dot(obstacleList[i][0],obstacleEdgeNormals[i][j])
-            else:
-                edgedot2 = np.dot(obstacleList[i][j+1],obstacleEdgeNormals[i][j])
-            #print(f"pointdot is {pointdot} edgedot1 is {edgedot1} edgedot2 is {edgedot2}")
-            # if pointdot[0]<edgedot2[0] and pointdot[0]>edgedot1[0]:
-            #     print(f'collision true between {point} and {obstacleList[i]}')
-            if not(pointdot<edgedot2 and pointdot>edgedot1):
+            for k in range(len(obstacleList[i])):
+                edgedot = np.dot(obstacleList[i][k],obstacleEdgeNormals[i][j])
+                if maxdot<edgedot:
+                    maxdot = edgedot
+                if mindot > edgedot:
+                    mindot = edgedot
+            if not(pointdot<maxdot and pointdot>mindot):
                 print(f'no collision between {point} and {obstacleList[i]}')
                 collision = False
                 break
@@ -78,7 +85,14 @@ ax.plot(point[0], point[1], 'ro', markersize=10, label='Particle')
 collisionIdx = detectCollision()
 if collisionIdx !=-1:
     collisionEdge = findCollisionEdge(collisionIdx)
-
+    collisionEdgeNormal = obstacleEdgeNormals[collisionIdx][collisionEdge]
+    # Plot normal vector
+    normal_scale = 20  # Scale factor for the normal vector
+    ax.quiver(point[0], point[1], 
+                collisionEdgeNormal[0], collisionEdgeNormal[1], 
+                angles='xy', scale_units='xy', scale=1/normal_scale,
+                color='g', label='Parallel Vector')
+    
     if collisionEdge == len(obstacleList[collisionIdx]) - 1:
         x_values = [obstacleList[collisionIdx][collisionEdge][0], obstacleList[collisionIdx][0][0]]
         y_values = [obstacleList[collisionIdx][collisionEdge][1], obstacleList[collisionIdx][0][1]]
@@ -86,6 +100,27 @@ if collisionIdx !=-1:
         x_values = [obstacleList[collisionIdx][collisionEdge][0], obstacleList[collisionIdx][collisionEdge+1][0]]
         y_values = [obstacleList[collisionIdx][collisionEdge][1], obstacleList[collisionIdx][collisionEdge+1][1]]
     ax.plot(x_values, y_values, 'bo', linestyle="--")
+
+# Plot all edge normals
+normal_scale = 20  # Scale factor for the normal vectors
+for i, obstacle in enumerate(obstacleList):
+    for j in range(len(obstacle)):
+        # Get edge points
+        edge1 = obstacle[j]
+        edge2 = obstacle[0] if j == len(obstacle)-1 else obstacle[j+1]
+        
+        # Calculate midpoint of edge for normal vector origin
+        midpoint_x = (edge1[0] + edge2[0]) / 2
+        midpoint_y = (edge1[1] + edge2[1]) / 2
+        
+        # Get normal vector for this edge
+        normal = obstacleEdgeNormals[i][j]
+        
+        # Plot normal vector from edge midpoint
+        ax.quiver(midpoint_x, midpoint_y,
+                 normal[0], normal[1],
+                 angles='xy', scale_units='xy', scale=1/normal_scale,
+                 color='r', alpha=0.5)
 
 # Set plot properties
 ax.set_xlim(0, 150)
