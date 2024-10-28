@@ -1,5 +1,5 @@
 import math 
-
+from matplotlib.patches import Polygon
 import numpy as np
 import random
 
@@ -11,6 +11,7 @@ class SPH:
         self.particleList = particleList
         self.numParticles = numParticles
         self.obstacleList = obstacleList
+        self.obstacleEdgeNormals = self.calculateEdgeNormals()
         self.gravityOn = gravityOn
         self.floodRising = floodRising
 
@@ -102,7 +103,66 @@ class SPH:
             # print(f'pressureforce is {pressureForce}')
             # print(f'pressureforce1 is {pressureForce1}')
         return pressureForce
+    
+    def calculateEdgeNormals(self):
+        res = []
+        for obstacle in self.obstacleList:
+            edgenormals = []
+            for vertices in range(len(obstacle)):
+                if vertices != len(obstacle)-1:
+                    edgenormals.append((-(obstacle[vertices+1][1] - obstacle[vertices][1]),(obstacle[vertices+1][0] - obstacle[vertices][0])))
+                    #edgenormals.append(((obstacle[vertices+1][0] - obstacle[vertices][0]),(obstacle[vertices+1][1] - obstacle[vertices][1])))
+                else:
+                    edgenormals.append((-(obstacle[0][1] - obstacle[vertices][1]),(obstacle[0][0] - obstacle[vertices][0])))
+                    #edgenormals.append(((obstacle[0][0] - obstacle[vertices][0]),(obstacle[0][1] - obstacle[vertices][1])))
+            res.append(edgenormals)
+        #print(res)
+        return res
+    
+    def detectCollision(self,point):
+        for i in range(len(self.obstacleEdgeNormals)): #for each obstacle
+            collision = True
+            #print(f'checking {len(self.obstacleEdgeNormals[i])} normals')
+            mindot = 999
+            maxdot = -999
+            for j in range(len(self.obstacleEdgeNormals[i])): #for each obstacle normal
+                pointdot = np.dot(point,self.obstacleEdgeNormals[i][j])
+                for k in range(len(self.obstacleList[i])):
+                    edgedot = np.dot(self.obstacleList[i][k],self.obstacleEdgeNormals[i][j])
+                    if maxdot<edgedot:
+                        maxdot = edgedot
+                    if mindot > edgedot:
+                        mindot = edgedot
+                if not(pointdot<maxdot and pointdot>mindot):
+                    #print(f'no collision between {point} and {self.obstacleList[i]}')
+                    collision = False
+                    break
+            if collision:
+                print(f'COLLISION between {point} and {self.obstacleList[i]}')
+                return i
+        return -1
 
+    def findCollisionEdge(self,obstacleIdx,particleIdx):
+        min_distance = 999
+        nearest_edge = -1
+        for j in range(len(self.obstacleList[obstacleIdx])):
+            edge1 = self.obstacleList[obstacleIdx][j]
+            if j == len(self.obstacleList[obstacleIdx])-1:
+                edge2 = self.obstacleList[obstacleIdx][0]
+            else:
+                edge2 = self.obstacleList[obstacleIdx][j+1]
+            # print(edge1)
+            # print(edge2)
+            parallelogram_area = abs((edge2[0]-edge1[0]) * (self.particleList[particleIdx][1]-edge1[1]) - (edge2[1]-edge1[1]) * (self.particleList[particleIdx][0]-edge1[0]))
+            base = math.sqrt((edge1[0]-edge2[0])*(edge1[0]-edge2[0])+(edge1[1]-edge2[1])*(edge1[1]-edge2[1]))
+            distance = parallelogram_area/base
+            #print(f'distance:{distance} edge:{j} between {edge1} and {edge2}')
+            if distance < min_distance:
+                min_distance = distance
+                nearest_edge = j
+        #print(f'nearest edge is {nearest_edge}')
+        return nearest_edge
+    
     def resolveCollisions(self,pos,posIdx,obstacles):
         # Check for collision with side walls
         if pos[0] > self.plotSize * self.ratio[0] or pos[0]<0.0:
@@ -126,27 +186,32 @@ class SPH:
                 #pos[1] = self.plotFloor
                 pos[1] += self.plotFloorSpeed * 3
 
-        for i in obstacles:
-            precollisionx = self.particleList[posIdx][0]>i[0][0] and self.particleList[posIdx][0]<i[1][0]
-            precollisiony = self.particleList[posIdx][1]<i[0][1] and self.particleList[posIdx][1]>i[3][1]
-            collisionx = pos[0]>i[0][0] and pos[0]<i[1][0]
-            collisiony = pos[1]<i[0][1] and pos[1]>i[3][1]
-            if collisionx and collisiony:
-                #inside rectangle
-                if not precollisionx and precollisiony:
-                #if collisionx:
-                    if self.gravityOn:
-                        self.velocities[posIdx] = (-self.velocities[posIdx][0]* self.collisionDamping,self.velocities[posIdx][1]) 
-                        pos[0] = self.particleList[posIdx][0] + self.velocities[posIdx][0] * self.deltaTime
-                    else:
-                        pos[0] = self.particleList[posIdx][0]
-                if precollisionx and not precollisiony:
-                #if collisiony:
-                    if self.gravityOn:
-                        self.velocities[posIdx] = (self.velocities[posIdx][0],-self.velocities[posIdx][1] * self.collisionDamping)        
-                        pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
-                    else:
-                        pos[1] = self.particleList[posIdx][1]
+        collisionIdx = self.detectCollision(pos)
+        if collisionIdx != -1:
+            collisionEdge = self.findCollisionEdge(collisionIdx,posIdx)
+            collisionEdgeNormal = self.obstacleEdgeNormals[collisionIdx][collisionEdge]
+            collisionEdgeParallel = (-collisionEdgeNormal[1],collisionEdgeNormal[0])
+            # Project velocity onto normal and parallel components
+            v_normal = (self.velocities[posIdx][0] * collisionEdgeNormal[0] + self.velocities[posIdx][1] * collisionEdgeNormal[1])/(math.sqrt(collisionEdgeNormal[0] * collisionEdgeNormal[0] + collisionEdgeNormal[1] * collisionEdgeNormal[1]))
+            v_parallel = (self.velocities[posIdx][0] * collisionEdgeParallel[0] + self.velocities[posIdx][1] * collisionEdgeParallel[1])/(math.sqrt(collisionEdgeParallel[0] * collisionEdgeParallel[0] + collisionEdgeParallel[1] * collisionEdgeParallel[1]))
+            
+            # Update velocity based on collision response
+            if self.gravityOn:
+                # Reflect normal component with damping, preserve parallel component
+                new_v_normal = -v_normal * self.collisionDamping
+                self.velocities[posIdx] = (new_v_normal * collisionEdgeNormal[0] + v_parallel * collisionEdgeParallel[0],
+                                            new_v_normal * collisionEdgeNormal[1] + v_parallel * collisionEdgeParallel[1])
+            else:
+                # Zero out normal component, preserve parallel component
+                self.velocities[posIdx] = (v_parallel * collisionEdgeParallel[0],
+                                            v_parallel * collisionEdgeParallel[1])
+            
+            # Update position
+            pos[0] = self.particleList[posIdx][0] + self.velocities[posIdx][0] * self.deltaTime
+            pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
+            
+            #find the normal of this and flip sign, and leave the parallel vector (with grav)
+            #find the normal of this and reduce to 0, and only leave the parallel vector (no grav)
         return (pos[0],pos[1])
     
     def viscositySmoothingKernel(self,radius,dist):
