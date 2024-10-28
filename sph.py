@@ -34,7 +34,7 @@ class SPH:
         self.debug = debug
         
 
-        #Initialisers
+        #Initialisers (global information)
         self.densities= [0.0 for i in range(self.numParticles)]
         self.velocities = [(0.0,0.0) for x in range(self.numParticles)]
         self.predictedPositions = particleList.copy()
@@ -81,17 +81,26 @@ class SPH:
             dist = math.dist(self.particleList[particleIndex],self.particleList[i])
             if dist == 0:
                 dirx = -1 if random.randint(0,1) == 0 else 1
-                dirx = -1 if random.randint(0,1) == 0 else 1
+                diry = -1 if random.randint(0,1) == 0 else 1
             else:
                 dirx = (self.particleList[i][0] - self.particleList[particleIndex][0])/dist
                 diry = (self.particleList[i][1] - self.particleList[particleIndex][1])/dist
             slope = self.smoothingKernelDerivative(self.smoothingRadius,dist)
             density = self.densities[i]
             sharedPressure = self.calculateSharedPressure(density,self.densities[particleIndex])
+            
+            # pressureForce1 = (pressureForce[0] + \
+            #                  self.densityToPressure(sharedPressure) * dirx * slope * self.mass / density, \
+            #                  pressureForce[1] + \
+            #                  self.densityToPressure(sharedPressure) * diry * slope * self.mass / density)
             pressureForce = (pressureForce[0] + \
-                             self.densityToPressure(sharedPressure) * dirx * slope * self.mass / density, \
+                             sharedPressure * dirx * slope * self.mass / density, \
                              pressureForce[1] + \
-                             self.densityToPressure(sharedPressure) * diry * slope * self.mass / density)
+                             sharedPressure * diry * slope * self.mass / density)
+            # print(f'sharedPressure is {sharedPressure}')
+            # print(f'Other is {self.densityToPressure(sharedPressure)}')
+            # print(f'pressureforce is {pressureForce}')
+            # print(f'pressureforce1 is {pressureForce1}')
         return pressureForce
 
     def resolveCollisions(self,pos,posIdx,obstacles):
@@ -103,7 +112,8 @@ class SPH:
             else:
                 pos[0] = self.particleList[posIdx][0]
         # Check for collision with ground and top
-        if (pos[1]) < self.plotFloor or pos[1] > self.ratio[1]*self.plotSize:
+        #if (pos[1]) < self.plotFloor or pos[1] > self.ratio[1]*self.plotSize:
+        if (pos[1]) < self.plotFloor:
             if self.gravityOn:
                 if self.velocities[posIdx][1]>0 and (pos[1]) < self.plotFloor:
                     pos[1] = pos[1]
@@ -160,7 +170,6 @@ class SPH:
 
         for i in range(self.numParticles):#add gravity
             self.velocities[i] = (self.velocities[i][0], self.velocities[i][1] -self.gravity * self.deltaTime )
-            #print(f'predicted Pos:{self.predictedPositions} particleList:{self.particleList} velocicities:{self.velocities}')
             self.predictedPositions[i] = (self.particleList[i][0] + self.velocities[i][0] * self.deltaTime, self.particleList[i][1] + self.velocities[i][1] * self.deltaTime)
         
         self.updateDensities() #update densities
@@ -174,8 +183,9 @@ class SPH:
                                       self.velDamp * self.velocities[i][1] + pa[1] * self.deltaTime + vf[1] * self.deltaTime)
             else: #direct acceleration assignment + bodyforce
                 self.velocities[i] = (pa[0] * self.deltaTime + self.bodyforce[0], pa[1] * self.deltaTime + self.bodyforce[1])
-            ###TODO fix gravity, as direct assignment does not work for obstacles
-        for i in range(self.numParticles): #update positions
+            #print(self.velocities[i])
+
+        for i in range(self.numParticles): #update positions and resolve collision
             newi =[self.particleList[i][0] + self.velocities[i][0] * self.deltaTime, self.particleList[i][1] + self.velocities[i][1] * self.deltaTime]
             if i == 1 and self.debug:
                 print(f'testing to move from {self.particleList[i]} to {newi}')
