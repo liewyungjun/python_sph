@@ -13,7 +13,7 @@ import numpy as np
 simulationsteps = 2000
 particleMarkerSize = 2 #size of particle in axes units
 plotSize = 50.0
-ratio = (3,4) #ratio of plot size
+ratio = [3,4,2] #ratio of plot size
 axesScaling = 10 #size of axes scaling factor e.g. 10 units/axesScaling = plot cm size
 floodRisingFrameStart = 50
 plotFloor = 0.0
@@ -23,7 +23,7 @@ gridSpacing = 10
 #Simulation physics setup
 #obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)]] #TODO: add 3D
 obstacleList = []
-numParticles = 49
+numParticles = 100
 floodRising = False
 gravityOn = False
 
@@ -37,7 +37,7 @@ mass = 1.0
 gravity = 10.0
 deltaTime = 0.02
 velDamp = 1.0
-bodyforce = (0,0.0,-20.0) #TODO: z or y is down??  #only when gravity is turned off
+bodyforce = [0,0.0,-20.0] #TODO: z or y is down??  #only when gravity is turned off
 #bodyforce = (0,0)
 #viscosityStrength = 200
 viscosityStrength = 0
@@ -68,6 +68,7 @@ def generateParticleGrid(numParticles):#particle generation
             x = i%x_cap * gridSpacing
             y = y_offset * gridSpacing
             particleList.append([x,y,0.0])
+    particleList[-1] = [x,y,5.0]
             
     # particleGridLength = plotSize*ratio[0] * 0.8
     # gridSize = int(math.sqrt(numParticles))
@@ -117,6 +118,7 @@ SPHObject = sph_3D.SPH_3D(particleList=particleList,obstacleList=obstacleList,nu
 #Simulation graphical size calculations
 x_limits = (0, ratio[0]*plotSize)
 y_limits = (0, ratio[1]*plotSize)
+z_limits = (0, ratio[2]*plotSize)
 figsize = ((x_limits[1]-x_limits[0]) / (2.54*axesScaling*0.8), (y_limits[1] - y_limits[0]) / (2.54*axesScaling*0.8))
 inches_per_unit = figsize[0] / (x_limits[1] - x_limits[0])  # how many inches per axis unit
 points_per_unit = inches_per_unit * 72  # convert to points
@@ -127,7 +129,7 @@ fig = plt.figure(figsize=(figsize), dpi=122)
 ax = fig.add_subplot(111, projection='3d')
 ax.set_xlim(x_limits)
 ax.set_ylim(y_limits)
-ax.set_zlim(x_limits)
+ax.set_zlim(z_limits)
 ax.set_box_aspect([1, 1, 1])
 plt.xticks(np.arange(x_limits[0], x_limits[1], 5.0))
 plt.title(f"SPH Simulation\nParticles: {numParticles}, Target Density: {targetDensity:.2e}")

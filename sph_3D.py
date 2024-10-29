@@ -86,7 +86,7 @@ class SPH_3D:
             else:
                 dirx = (self.particleList[i][0] - self.particleList[particleIndex][0])/dist
                 diry = (self.particleList[i][1] - self.particleList[particleIndex][1])/dist
-                dirz = (self.particleList[i][2] - self.particleList[particleIndex][2])/dist
+                dirz = (self.particleList[i][2] - self.particleList[particleIndex][2])/dist #TODO: dirz is always zero, need to spawn them on top of each other?
             slope = self.smoothingKernelDerivative(self.smoothingRadius,dist)
             density = self.densities[i]
             sharedPressure = self.calculateSharedPressure(density,self.densities[particleIndex])
@@ -101,61 +101,69 @@ class SPH_3D:
                              sharedPressure * diry * slope * self.mass / density, \
                              pressureForce[2] + \
                              sharedPressure * dirz * slope * self.mass / density])
+            #if particleIndex == 55:
+                #print(f'pressure force = sharedPressure {sharedPressure} * dirz {dirz} * slope {slope} * self.mass {self.mass} / density {density}')
             # print(f'sharedPressure is {sharedPressure}')
             # print(f'Other is {self.densityToPressure(sharedPressure)}')
             # print(f'pressureforce is {pressureForce}')
             # print(f'pressureforce1 is {pressureForce1}')
+        #print(f'{pressureForce}')
         return pressureForce
 
     def resolveCollisions(self,pos,posIdx,obstacles):
         # Check for collision with side walls
         if pos[0] > self.plotSize * self.ratio[0] or pos[0]<0.0:
             if self.gravityOn:
-                #TODO: 
-                self.velocities[posIdx] = (-self.velocities[posIdx][0]* self.collisionDamping,self.velocities[posIdx][1]) 
+                self.velocities[posIdx][0] = -self.velocities[posIdx][0]* self.collisionDamping
                 pos[0] = self.particleList[posIdx][0] + self.velocities[posIdx][0] * self.deltaTime
             else:
                 pos[0] = self.particleList[posIdx][0]
-        # Check for collision with ground and top
-        #if (pos[1]) < self.plotFloor or pos[1] > self.ratio[1]*self.plotSize:
-        if (pos[1]) < self.plotFloor:
+        if pos[1] > self.plotSize * self.ratio[1] or pos[1]<0.0:
             if self.gravityOn:
-                if self.velocities[posIdx][1]>0 and (pos[1]) < self.plotFloor:
-                    pos[1] = pos[1]
-                else:
-                    #TODO: 
-                    self.velocities[posIdx] = (self.velocities[posIdx][0],-self.velocities[posIdx][1] * self.collisionDamping)        
-                    pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
+                self.velocities[posIdx][1] = -self.velocities[posIdx][1]* self.collisionDamping
+                pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
             else:
                 pos[1] = self.particleList[posIdx][1]
-            if self.floodRising and pos[1] < self.plotFloor: #below flood level
-                #pos[1] = self.plotFloor
-                pos[1] += self.plotFloorSpeed * 3
+        # Check for collision with ground and top
+        #if (pos[1]) < self.plotFloor or pos[1] > self.ratio[1]*self.plotSize:
+        if (pos[2]) < 0.0:
+            if self.gravityOn:
+                if self.velocities[posIdx][2]>0 and (pos[2]) < self.plotFloor:
+                    pos[2] = pos[2]
+                else:
+                    #TODO: 
+                    self.velocities[posIdx][2] = -self.velocities[posIdx][2] * self.collisionDamping
+                    pos[2] = self.particleList[posIdx][2] + self.velocities[posIdx][2] * self.deltaTime
+            else:
+                pos[2] = self.particleList[posIdx][2]
+            # if self.floodRising and pos[1] < self.plotFloor: #below flood level
+            #     #pos[1] = self.plotFloor
+            #     pos[1] += self.plotFloorSpeed * 3
 
-        for i in obstacles:
-            precollisionx = self.particleList[posIdx][0]>i[0][0] and self.particleList[posIdx][0]<i[1][0]
-            precollisiony = self.particleList[posIdx][1]<i[0][1] and self.particleList[posIdx][1]>i[3][1]
-            collisionx = pos[0]>i[0][0] and pos[0]<i[1][0]
-            collisiony = pos[1]<i[0][1] and pos[1]>i[3][1]
-            if collisionx and collisiony:
-                #inside rectangle
-                if not precollisionx and precollisiony:
-                #if collisionx:
-                    if self.gravityOn:
-                        #TODO: 
-                        self.velocities[posIdx] = (-self.velocities[posIdx][0]* self.collisionDamping,self.velocities[posIdx][1]) 
-                        pos[0] = self.particleList[posIdx][0] + self.velocities[posIdx][0] * self.deltaTime
-                    else:
-                        pos[0] = self.particleList[posIdx][0]
-                if precollisionx and not precollisiony:
-                #if collisiony:
-                    if self.gravityOn:
-                        #TODO: 
-                        self.velocities[posIdx] = (self.velocities[posIdx][0],-self.velocities[posIdx][1] * self.collisionDamping)        
-                        pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
-                    else:
-                        pos[1] = self.particleList[posIdx][1]
-        return (pos[0],pos[1])
+        # for i in obstacles:
+        #     precollisionx = self.particleList[posIdx][0]>i[0][0] and self.particleList[posIdx][0]<i[1][0]
+        #     precollisiony = self.particleList[posIdx][1]<i[0][1] and self.particleList[posIdx][1]>i[3][1]
+        #     collisionx = pos[0]>i[0][0] and pos[0]<i[1][0]
+        #     collisiony = pos[1]<i[0][1] and pos[1]>i[3][1]
+        #     if collisionx and collisiony:
+        #         #inside rectangle
+        #         if not precollisionx and precollisiony:
+        #         #if collisionx:
+        #             if self.gravityOn:
+        #                 #TODO: 
+        #                 self.velocities[posIdx] = (-self.velocities[posIdx][0]* self.collisionDamping,self.velocities[posIdx][1]) 
+        #                 pos[0] = self.particleList[posIdx][0] + self.velocities[posIdx][0] * self.deltaTime
+        #             else:
+        #                 pos[0] = self.particleList[posIdx][0]
+        #         if precollisionx and not precollisiony:
+        #         #if collisiony:
+        #             if self.gravityOn:
+        #                 #TODO: 
+        #                 self.velocities[posIdx] = (self.velocities[posIdx][0],-self.velocities[posIdx][1] * self.collisionDamping)        
+        #                 pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
+        #             else:
+        #                 pos[1] = self.particleList[posIdx][1]
+        return pos[0],pos[1],pos[2]
     
     def viscositySmoothingKernel(self,radius,dist):
         if dist > radius:
@@ -198,5 +206,5 @@ class SPH_3D:
             newi = self.particleList[i] + self.velocities[i] * self.deltaTime
             if i == 1 and self.debug:
                 print(f'testing to move from {self.particleList[i]} to {newi}')
-            #self.particleList[i] = self.resolveCollisions(newi,i,self.obstacleList)
-            self.particleList[i] = newi
+            self.particleList[i] = self.resolveCollisions(newi,i,self.obstacleList)
+            #self.particleList[i] = newi
