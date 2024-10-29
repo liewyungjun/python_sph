@@ -2,6 +2,7 @@ import math
 from matplotlib.patches import Polygon
 import numpy as np
 import random
+import time
 
 class SPH:
     def __init__(self,particleList,obstacleList,numParticles,plotSize,plotFloor,\
@@ -110,10 +111,12 @@ class SPH:
             edgenormals = []
             for vertices in range(len(obstacle)):
                 if vertices != len(obstacle)-1:
-                    edgenormals.append((-(obstacle[vertices+1][1] - obstacle[vertices][1]),(obstacle[vertices+1][0] - obstacle[vertices][0])))
+                    length = math.sqrt(((obstacle[vertices+1][1] - obstacle[vertices][1])*(obstacle[vertices+1][1] - obstacle[vertices][1]))+((obstacle[vertices+1][0] - obstacle[vertices][0])*(obstacle[vertices+1][0] - obstacle[vertices][0])))
+                    edgenormals.append((-(obstacle[vertices+1][1] - obstacle[vertices][1])/length,(obstacle[vertices+1][0] - obstacle[vertices][0])/length))
                     #edgenormals.append(((obstacle[vertices+1][0] - obstacle[vertices][0]),(obstacle[vertices+1][1] - obstacle[vertices][1])))
                 else:
-                    edgenormals.append((-(obstacle[0][1] - obstacle[vertices][1]),(obstacle[0][0] - obstacle[vertices][0])))
+                    length = math.sqrt(((obstacle[0][1] - obstacle[vertices][1])*(obstacle[0][1] - obstacle[vertices][1]))+((obstacle[0][0] - obstacle[vertices][0])*(obstacle[0][0] - obstacle[vertices][0])))
+                    edgenormals.append((-(obstacle[0][1] - obstacle[vertices][1])/length,(obstacle[0][0] - obstacle[vertices][0])/length))
                     #edgenormals.append(((obstacle[0][0] - obstacle[vertices][0]),(obstacle[0][1] - obstacle[vertices][1])))
             res.append(edgenormals)
         #print(res)
@@ -123,22 +126,27 @@ class SPH:
         for i in range(len(self.obstacleEdgeNormals)): #for each obstacle
             collision = True
             #print(f'checking {len(self.obstacleEdgeNormals[i])} normals')
-            mindot = 999
-            maxdot = -999
             for j in range(len(self.obstacleEdgeNormals[i])): #for each obstacle normal
+                mindot = float('inf')
+                maxdot = float('-inf')
                 pointdot = np.dot(point,self.obstacleEdgeNormals[i][j])
-                for k in range(len(self.obstacleList[i])):
+                for k in range(len(self.obstacleList[i])): #for each vertice
                     edgedot = np.dot(self.obstacleList[i][k],self.obstacleEdgeNormals[i][j])
+                    
                     if maxdot<edgedot:
                         maxdot = edgedot
                     if mindot > edgedot:
                         mindot = edgedot
+                edgeAnalyse = j+1 if j != len(self.obstacleEdgeNormals[i])-1 else 0
+                # print(f'edgedot is {edgedot} for vertice {self.obstacleList[i][k]}')
+                # print(f'obs {i} edge {j}:normal is {self.obstacleEdgeNormals[i][j]}')
+                # print(f'obs {i} edge {j}:edge {self.obstacleList[i][j]} and {self.obstacleList[i][edgeAnalyse]} pointdot is {pointdot}, maxdot is {maxdot}, mindot is {mindot}')
                 if not(pointdot<maxdot and pointdot>mindot):
                     #print(f'no collision between {point} and {self.obstacleList[i]}')
                     collision = False
                     break
             if collision:
-                print(f'COLLISION between {point} and {self.obstacleList[i]}')
+                #print(f'COLLISION between {point} and {self.obstacleList[i]}')
                 return i
         return -1
 
@@ -192,9 +200,11 @@ class SPH:
             collisionEdgeNormal = self.obstacleEdgeNormals[collisionIdx][collisionEdge]
             collisionEdgeParallel = (-collisionEdgeNormal[1],collisionEdgeNormal[0])
             # Project velocity onto normal and parallel components
-            v_normal = (self.velocities[posIdx][0] * collisionEdgeNormal[0] + self.velocities[posIdx][1] * collisionEdgeNormal[1])/(math.sqrt(collisionEdgeNormal[0] * collisionEdgeNormal[0] + collisionEdgeNormal[1] * collisionEdgeNormal[1]))
-            v_parallel = (self.velocities[posIdx][0] * collisionEdgeParallel[0] + self.velocities[posIdx][1] * collisionEdgeParallel[1])/(math.sqrt(collisionEdgeParallel[0] * collisionEdgeParallel[0] + collisionEdgeParallel[1] * collisionEdgeParallel[1]))
-            
+            #v_normal = (self.velocities[posIdx][0] * collisionEdgeNormal[0] + self.velocities[posIdx][1] * collisionEdgeNormal[1])/(math.sqrt(collisionEdgeNormal[0] * collisionEdgeNormal[0] + collisionEdgeNormal[1] * collisionEdgeNormal[1]))
+            #v_parallel = (self.velocities[posIdx][0] * collisionEdgeParallel[0] + self.velocities[posIdx][1] * collisionEdgeParallel[1])/(math.sqrt(collisionEdgeParallel[0] * collisionEdgeParallel[0] + collisionEdgeParallel[1] * collisionEdgeParallel[1]))
+            v_normal = (self.velocities[posIdx][0] * collisionEdgeNormal[0] + self.velocities[posIdx][1] * collisionEdgeNormal[1])
+            v_parallel = (self.velocities[posIdx][0] * collisionEdgeParallel[0] + self.velocities[posIdx][1] * collisionEdgeParallel[1])
+            print(f'particle {posIdx} ori velocity is {self.velocities[posIdx][0]:.4f},{self.velocities[posIdx][1]:.4f}')
             # Update velocity based on collision response
             if self.gravityOn:
                 # Reflect normal component with damping, preserve parallel component
@@ -205,7 +215,7 @@ class SPH:
                 # Zero out normal component, preserve parallel component
                 self.velocities[posIdx] = (v_parallel * collisionEdgeParallel[0],
                                             v_parallel * collisionEdgeParallel[1])
-            
+            print(f'particle {posIdx} new velocity is {self.velocities[posIdx][0]:.4f},{self.velocities[posIdx][1]:.4f}')
             # Update position
             pos[0] = self.particleList[posIdx][0] + self.velocities[posIdx][0] * self.deltaTime
             pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime

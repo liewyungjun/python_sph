@@ -14,13 +14,13 @@ particleMarkerSize = 2 #size of particle in axes units
 plotSize = 50.0
 ratio = (3,4) #ratio of plot size
 axesScaling = 10 #size of axes scaling factor e.g. 10 units/axesScaling = plot cm size
-floodRisingFrameStart = 50
+floodRisingFrameStart = 10
 plotFloor = 0.0
 plotFloorSpeed = 0.2
 
 #Simulation physics setup
 obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)]]
-numParticles = 4
+numParticles = 3
 floodRising = True
 gravityOn = False
 
@@ -44,7 +44,8 @@ save = False
 savename = "test.mp4"
 debug = False
 
-particleList = []
+#particleList = [(25,10),(45,10),(75,10),(95,10)]
+particleList = [(85,25),(95,25),(100,25)]
 rectangles = []
 
 def generateParticleGrid(numParticles):#particle generation
@@ -70,7 +71,7 @@ def generateParticleGrid(numParticles):#particle generation
                 y = j * spacing + offset[1]
                 particleList.append((x, y))
 
-generateParticleGrid(numParticles)
+#generateParticleGrid(numParticles)
 SPHObject = sph.SPH(particleList=particleList,obstacleList=obstacleList,numParticles=numParticles,plotSize=plotSize,plotFloor=plotFloor,\
                     debug=debug,ratio=ratio,gravityOn=gravityOn,floodRising=floodRising,\
                     pressureMultiplier=pressureMultiplier,targetDensity=targetDensity,\
@@ -130,6 +131,55 @@ def update(frame):
 
 # Create the animation
 anim = animation.FuncAnimation(fig, update, frames=simulationsteps, interval=deltaTime * 1000, blit=True,repeat=False)
+if save:
+    # Create timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Create folder name with simulation name and timestamp
+    folder_name = f"results/{savename.split('.')[0]}_{timestamp}"
+    
+    # Create folders if they don't exist
+    os.makedirs(folder_name, exist_ok=True)
+    
+    # Update save path to include new folder
+    save_path = os.path.join(folder_name, savename)
+    
+    # Save animation to the new folder
+    writervideo = animation.FFMpegWriter(fps=60)
+    anim.save(save_path, writer=writervideo)
+    
+    # Create and write parameters to txt file
+    params_file = os.path.join(folder_name, "parameters.txt")
+    with open(params_file, "w") as f:
+        f.write(f"Simulation Parameters:\n")
+        f.write(f"------------------------------------\n")
+        f.write(f"Simulation graphical setup\n")
+        f.write(f"Simulation Steps: {simulationsteps}\n")
+        f.write(f"Particle Marker Size: {particleMarkerSize}\n")
+        f.write(f'Plot size: {plotSize}\n')
+        f.write(f'Ratio: {ratio}\n')
+        f.write(f"Axes Scaling: {axesScaling}\n")
+        f.write(f"Flood Rising Frame Start: {floodRisingFrameStart}\n")
+        f.write(f'Plot floor: {plotFloor}\n')
+        f.write(f"Plot Floor Speed: {plotFloorSpeed}\n")
+        f.write(f"X Limits: {x_limits}\n")
+        f.write(f"Y Limits: {y_limits}\n")
+        f.write(f"------------------------------------\n")
+        f.write(f"Simulation physics setup\n")
+        f.write(f'Obstacle list: {obstacleList}\n')
+        f.write(f"Number of Particles: {numParticles}\n")
+        f.write(f"Flood Rising: {floodRising}\n")
+        f.write(f'GravityOn: {gravityOn}\n')
+        f.write(f'Pressure multiplier: {pressureMultiplier}\n')
+        f.write(f'Target density: {targetDensity}\n')
+        f.write(f'Smoothing radius: {smoothingRadius}\n')
+        f.write(f'Collision damping: {collisionDamping}\n')
+        f.write(f'Mass: {mass}\n')
+        f.write(f'Gravity: {gravity}\n')
+        f.write(f'Delta time: {deltaTime}\n')
+        f.write(f'VelDamp: {velDamp}\n')
+        f.write(f"Body Force: {bodyforce}\n")
+        f.write(f'Viscosity strength: {viscosityStrength}\n')
 
 plt.title(f"SPH Simulation\nParticles: {numParticles}, Target Density: {targetDensity:.2e}")
 plt.xlabel("X")
