@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 
 import numpy as np
+
 #Simulation graphical setup
 simulationsteps = 2000
 particleMarkerSize = 2 #size of particle in axes units
@@ -17,6 +18,7 @@ axesScaling = 10 #size of axes scaling factor e.g. 10 units/axesScaling = plot c
 floodRisingFrameStart = 50
 plotFloor = 0.0
 plotFloorSpeed = 0.1
+gridSpacing = 10
 
 #Simulation physics setup
 obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)]]
@@ -49,27 +51,44 @@ particleList = []
 rectangles = []
 
 def generateParticleGrid(numParticles):#particle generation
-    particleGridLength = plotSize*ratio[0] * 0.8
-    gridSize = int(math.sqrt(numParticles))
-    if gridSize == 0 or gridSize == 1:
-        gridSize = numParticles
-    if gridSize == 1:
-        spacing = particleGridLength
+    x_cap = plotSize * ratio[0] / gridSpacing
+    if x_cap > numParticles:
+        for i in range(numParticles):
+            x = i * gridSpacing
+            y = gridSpacing
+            particleList.append((x,y))
     else:
-        spacing = particleGridLength / (gridSize - 1)
-    offset = (plotSize*ratio[0] * 0.1,0)
-    if gridSize == numParticles:
-        print("small case")
-        for i in range(gridSize):
-            x = i * spacing + offset[0]
-            y = offset[1]
-            particleList.append((x, y))
-    else:
-        for i in range(gridSize):
-            for j in range(gridSize):
-                x = i * spacing + offset[0]
-                y = j * spacing + offset[1]
-                particleList.append((x, y))
+        y_offset = 1
+        rownum = 0
+        for i in range(numParticles):
+            if i // x_cap > rownum:
+                y_offset +=1
+                rownum +=1
+            x = i%x_cap * gridSpacing
+            y = y_offset * gridSpacing
+            particleList.append((x,y))
+            
+    # particleGridLength = plotSize*ratio[0] * 0.8
+    # gridSize = int(math.sqrt(numParticles))
+    # if gridSize == 0 or gridSize == 1:
+    #     gridSize = numParticles
+    # if gridSize == 1:
+    #     spacing = particleGridLength
+    # else:
+    #     spacing = particleGridLength / (gridSize - 1)
+    # offset = (plotSize*ratio[0] * 0.1,0)
+    # if gridSize == numParticles:
+    #     print("small case")
+    #     for i in range(gridSize):
+    #         x = i * spacing + offset[0]
+    #         y = offset[1]
+    #         particleList.append((x, y))
+    # else:
+    #     for i in range(gridSize):
+    #         for j in range(gridSize):
+    #             x = i * spacing + offset[0]
+    #             y = j * spacing + offset[1]
+    #             particleList.append((x, y))
 
 def readMap(mapname):
     with open(f'maps/{mapname}.txt', 'r') as f:
