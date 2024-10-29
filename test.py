@@ -9,14 +9,14 @@ from datetime import datetime
 
 import numpy as np
 #Simulation graphical setup
-simulationsteps = 1200
+simulationsteps = 2000
 particleMarkerSize = 2 #size of particle in axes units
 plotSize = 50.0
 ratio = (3,4) #ratio of plot size
 axesScaling = 10 #size of axes scaling factor e.g. 10 units/axesScaling = plot cm size
-floodRisingFrameStart = 200
+floodRisingFrameStart = 50
 plotFloor = 0.0
-plotFloorSpeed = 0.2
+plotFloorSpeed = 0.1
 
 #Simulation physics setup
 obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)]]
@@ -24,7 +24,7 @@ numParticles = 49
 floodRising = True
 gravityOn = False
 
-#pressureMultiplier = 200
+#pressureMultiplier = 20000
 #pressureMultiplier = 100000
 pressureMultiplier = 500000
 targetDensity = 0.002
@@ -41,8 +41,9 @@ viscosityStrength = 0
 
 #Tools
 save = False
-savename = "test.mp4"
+savename = "cupCoveredTop_noG.mp4"
 debug = False
+mapname = "upcup"
 
 particleList = []
 rectangles = []
@@ -70,7 +71,21 @@ def generateParticleGrid(numParticles):#particle generation
                 y = j * spacing + offset[1]
                 particleList.append((x, y))
 
+def readMap(mapname):
+    with open(f'maps/{mapname}.txt', 'r') as f:
+        content = f.read()
+        # Convert string representation of list to actual list
+        points = eval(content)
+        #print(points)
+        # Since we have a single obstacle, we'll return it in the obstacleList format
+        obstacleList = points
+        #obstacleList = [[(x, y) for x, y in points]]
+        return obstacleList
+    
+obstacleList = readMap(mapname)
+
 generateParticleGrid(numParticles)
+
 SPHObject = sph.SPH(particleList=particleList,obstacleList=obstacleList,numParticles=numParticles,plotSize=plotSize,plotFloor=plotFloor,\
                     debug=debug,ratio=ratio,gravityOn=gravityOn,floodRising=floodRising,\
                     pressureMultiplier=pressureMultiplier,targetDensity=targetDensity,\
