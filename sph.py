@@ -180,17 +180,20 @@ class SPH:
                 self.velocities[posIdx] = (0.0,self.velocities[posIdx][1])                 
         # Check for collision with ground and top
         #if (pos[1]) < self.plotFloor or pos[1] > self.ratio[1]*self.plotSize:
-        if (pos[1]) < self.plotFloor:
+        if (pos[1]) < self.plotFloor: #if going down below floor
+            #print("below floor")
             if self.gravityOn:
                 if self.velocities[posIdx][1]<0: #reflect if going down
                     self.velocities[posIdx] = (self.velocities[posIdx][0],-self.velocities[posIdx][1] * self.collisionDamping)        
             else:
                 if self.velocities[posIdx][1]<0: #stop if going down
-                    self.velocities[posIdx] = (self.velocities[posIdx][0],0.0)        
-            if self.floodRising and pos[1] < self.plotFloor: #below flood level
-                #pos[1] = self.plotFloor
-                #TODO: maybe make a proportional speed from how far to the flood surface
-                self.velocities[posIdx] = (self.velocities[posIdx][0],self.plotFloorSpeed * 3 / self.deltaTime)        
+                    self.velocities[posIdx] = (self.velocities[posIdx][0],0.0)  
+                    #self.particleList[posIdx] = (self.particleList[posIdx][0],self.plotFloor)
+            if self.floodRising and pos[1] < self.plotFloor and self.particleList[posIdx][1] < self.plotFloor: 
+                #if already below flood level
+                posdist = self.plotFloor - pos[1]
+                veldist = min(2, max(1, posdist))
+                self.velocities[posIdx] = (self.velocities[posIdx][0],self.plotFloorSpeed * veldist/self.deltaTime)   
         pos[0] = self.particleList[posIdx][0] + self.velocities[posIdx][0] * self.deltaTime
         pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
 
@@ -260,3 +263,5 @@ class SPH:
             if i == 1 and self.debug:
                 print(f'testing to move from {self.particleList[i]} to {newi}')
             self.particleList[i] = self.resolveCollisions(newi,i,self.obstacleList)
+        #print(f'my velocity is {self.velocities[0]}, my position is {self.particleList[0]}')  
+        #time.sleep(2)   
