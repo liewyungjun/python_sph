@@ -26,7 +26,7 @@ gridSpacing = 10
 #Simulation physics setup
 obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)]]
 numParticles = 25
-floodRising = False
+floodRising = True
 gravityOn = False
 
 if gravityOn:
@@ -47,11 +47,13 @@ bodyforce = (0,-20.0) #only when gravity is turned off
 viscosityStrength = 0
 
 #Tools
-save = False
-savename = "cupCoveredTop_noG.mp4"
+save = True
+results_path = "demo_results"
+savename = "maze_noG.mp4"
 debug = False
 loadmap = True
-mapname = "poly2"
+loadpath = "demo_maps"
+mapname = "maze"
 
 particleList = []
 polygons = []
@@ -97,7 +99,7 @@ def generateParticleGrid(numParticles):#particle generation
     #             particleList.append((x, y))
 
 def readMap(mapname):
-    with open(f'maps/{mapname}.txt', 'r') as f:
+    with open(f'{loadpath}/{mapname}.txt', 'r') as f:
         content = f.read()
         # Convert string representation of list to actual list
         points = eval(content)
@@ -153,9 +155,9 @@ def update(frame):
     # if frame ==5:
     #     time.sleep(2)
     SPHObject.step()
-    print("densities table")
-    for i in range(len(SPHObject.densities)):
-        print(f'{i}: {SPHObject.densities[i]}')
+    # print("densities table")
+    # for i in range(len(SPHObject.densities)):
+    #     print(f'{i}: {SPHObject.densities[i]}')
     #update ball loc 
     for i in range(len(ballaxs)):
         ballaxs[i].set_data([SPHObject.particleList[i][0]],[SPHObject.particleList[i][1]])
@@ -178,7 +180,7 @@ if save:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
     # Create folder name with simulation name and timestamp
-    folder_name = f"results/{savename.split('.')[0]}_{timestamp}"
+    folder_name = f"{results_path}/{savename.split('.')[0]}_{timestamp}"
     
     # Create folders if they don't exist
     os.makedirs(folder_name, exist_ok=True)
