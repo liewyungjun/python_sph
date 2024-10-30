@@ -5,26 +5,41 @@ from matplotlib.patches import Rectangle
 def onclick(event):
     if event.button == 1:  # Left click
         if event.inaxes:
-            points.append([event.xdata, event.ydata])
-            ax.plot(event.xdata, event.ydata, 'ro')  # Plot point
-            plt.draw()
+            x_click = event.xdata
+            y_click = event.ydata
+        else:
+            # If clicked outside, get mouse coordinates in figure coordinates
+            x_click = event.x
+            y_click = event.y
+            print(f'clicked outside at {x_click}, {y_click}')
+            # Convert to data coordinates
+            x_click, y_click = ax.transData.inverted().transform((event.x, event.y))            
+            print(f'converted dpi at {x_click}, {y_click}')
+            # Clamp to plot boundaries
+            buffer = 5.0
+            x_click = np.clip(x_click, x_limits[0]+buffer, x_limits[1]+buffer)
+            y_click = np.clip(y_click, y_limits[0]+buffer, y_limits[1]+buffer)
             
-            if len(points) == 2:  # After second click, create rectangle
-                x1, y1 = points[0]
-                x2, y2 = points[1]
-                width = x2 - x1
-                height = y2 - y1
-                rect = Rectangle((x1, y1), width, height, alpha=0.5)
-                ax.add_patch(rect)
-                # Create all four corners
-                corner = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
-                # Save corners
-                corners.append(corner)
-                # with open('polygon_points.txt', 'a') as f:
-                #     f.write(str(corner) + '\n')
-                points.clear()  # Clear points for next rectangle
-                plt.draw()
-
+        points.append([x_click, y_click])
+        ax.plot(x_click, y_click, 'ro')  # Plot point
+        plt.draw()
+        
+        if len(points) == 2:  # After second click, create rectangle
+            x1, y1 = points[0]
+            x2, y2 = points[1]
+            width = x2 - x1
+            height = y2 - y1
+            rect = Rectangle((x1, y1), width, height, alpha=0.5)
+            ax.add_patch(rect)
+            # Create all four corners
+            corner = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
+            # Save corners
+            temp = [[round(x[0], 2), round(x[1], 2)] for x in corner]
+            corners.append(temp)
+            # with open('polygon_points.txt', 'a') as f:
+            #     f.write(str(corner) + '\n')
+            points.clear()  # Clear points for next rectangle
+            plt.draw()
 def onkey(event):
     global points
     if event.key == 'home':  # Reset plot when home key is pressed
@@ -52,7 +67,7 @@ def on_close(event):
 ratio = (3,4)
 plotSize = 50.0
 axesScaling = 10 #size of axes scaling factor e.g. 10 units/axesScaling = plot cm size
-mapname = "maze"
+mapname = "test"
 
 #Simulation graphical size calculations
 x_limits = (0, ratio[0]*plotSize)
