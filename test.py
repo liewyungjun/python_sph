@@ -1,8 +1,11 @@
 import math 
+import time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.patches import Rectangle
 import sph
+from matplotlib.patches import Polygon
+
 
 import os
 from datetime import datetime
@@ -13,23 +16,25 @@ import numpy as np
 simulationsteps = 2000
 particleMarkerSize = 2 #size of particle in axes units
 plotSize = 50.0
-ratio = (3,4) #ratio of plot size
+ratio = (3,6) #ratio of plot size
 axesScaling = 10 #size of axes scaling factor e.g. 10 units/axesScaling = plot cm size
 floodRisingFrameStart = 50
 plotFloor = 0.0
-plotFloorSpeed = 0.1
+plotFloorSpeed = 0.2
 gridSpacing = 10
 
 #Simulation physics setup
 obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)]]
-numParticles = 49
-floodRising = True
+numParticles = 25
+floodRising = False
 gravityOn = False
 
-#pressureMultiplier = 20000
-#pressureMultiplier = 100000
-pressureMultiplier = 500000
-targetDensity = 0.002
+if gravityOn:
+    pressureMultiplier = 10000
+    targetDensity = 0.002
+else:
+    pressureMultiplier = 500000
+    targetDensity = 0.002
 smoothingRadius = 40.0
 collisionDamping = 0.8
 mass = 1.0
@@ -45,10 +50,11 @@ viscosityStrength = 0
 save = False
 savename = "cupCoveredTop_noG.mp4"
 debug = False
-mapname = "upcup"
+loadmap = True
+mapname = "poly2"
 
 particleList = []
-rectangles = []
+polygons = []
 
 def generateParticleGrid(numParticles):#particle generation
     x_cap = plotSize * ratio[0] / gridSpacing
@@ -101,9 +107,11 @@ def readMap(mapname):
         #obstacleList = [[(x, y) for x, y in points]]
         return obstacleList
     
-obstacleList = readMap(mapname)
+if loadmap:
+    obstacleList = readMap(mapname)
 
 generateParticleGrid(numParticles)
+#particleList = [(85,10),(80,10),(85,10),(87,10)]
 
 SPHObject = sph.SPH(particleList=particleList,obstacleList=obstacleList,numParticles=numParticles,plotSize=plotSize,plotFloor=plotFloor,\
                     debug=debug,ratio=ratio,gravityOn=gravityOn,floodRising=floodRising,\
@@ -131,10 +139,9 @@ plt.title(f"SPH Simulation\nParticles: {numParticles}, Target Density: {targetDe
 ax.set_position([0.1, 0.1, 0.8, 0.8])
 
 for obstacle in obstacleList:
-    rect = Rectangle((obstacle[3][0], obstacle[3][1]), obstacle[1][0] - obstacle[0][0],obstacle[0][1] - obstacle[3][1], fill=True, facecolor='gray')
-    ax.add_patch(rect)
-    rectangles.append(rect)
-
+    polygon = Polygon(obstacle, fill=True, facecolor='gray')
+    ax.add_patch(polygon)
+    polygons.append(polygon)
 # Initialize the balls
 ballaxs = []
 for i in range(numParticles):
@@ -143,10 +150,12 @@ floorLine = ax.axhline(y=SPHObject.plotFloor, color='red', linestyle='-')
 
 def update(frame):
     # Update position and velocity for both balls
+    # if frame ==5:
+    #     time.sleep(2)
     SPHObject.step()
-    # print("densities table")
-    # for i in range(len(SPHObject.densities)):
-    #     print(f'{i}: {SPHObject.densities[i]}')
+    print("densities table")
+    for i in range(len(SPHObject.densities)):
+        print(f'{i}: {SPHObject.densities[i]}')
     #update ball loc 
     for i in range(len(ballaxs)):
         ballaxs[i].set_data([SPHObject.particleList[i][0]],[SPHObject.particleList[i][1]])
@@ -155,9 +164,9 @@ def update(frame):
         #print("floodrising")
         SPHObject.plotFloor +=plotFloorSpeed
         floorLine.set_ydata([SPHObject.plotFloor, SPHObject.plotFloor])
-    if frame > floodRisingFrameStart and not floodRising:
-        print("bodyforce changed")
-        SPHObject.bodyforce = (-bodyforce[0],-bodyforce[1])
+    # if frame > floodRisingFrameStart and not floodRising:
+    #     print("bodyforce changed")
+    #     SPHObject.bodyforce = (-bodyforce[0],-bodyforce[1])
 
     return ballaxs + [floorLine]
     #return ballaxs 
