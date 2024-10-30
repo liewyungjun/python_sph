@@ -176,23 +176,23 @@ class SPH:
         if pos[0] > self.plotSize * self.ratio[0] or pos[0]<0.0:
             if self.gravityOn:
                 self.velocities[posIdx] = (-self.velocities[posIdx][0]* self.collisionDamping,self.velocities[posIdx][1]) 
-                pos[0] = self.particleList[posIdx][0] + self.velocities[posIdx][0] * self.deltaTime
             else:
-                pos[0] = self.particleList[posIdx][0]
+                self.velocities[posIdx] = (0.0,self.velocities[posIdx][1])                 
         # Check for collision with ground and top
         #if (pos[1]) < self.plotFloor or pos[1] > self.ratio[1]*self.plotSize:
         if (pos[1]) < self.plotFloor:
             if self.gravityOn:
-                if self.velocities[posIdx][1]>0 and (pos[1]) < self.plotFloor:
-                    pos[1] = pos[1]
-                else:
+                if self.velocities[posIdx][1]<0: #reflect if going down
                     self.velocities[posIdx] = (self.velocities[posIdx][0],-self.velocities[posIdx][1] * self.collisionDamping)        
-                    pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
             else:
-                pos[1] = self.particleList[posIdx][1]
+                if self.velocities[posIdx][1]<0: #stop if going down
+                    self.velocities[posIdx] = (self.velocities[posIdx][0],0.0)        
             if self.floodRising and pos[1] < self.plotFloor: #below flood level
                 #pos[1] = self.plotFloor
-                pos[1] += self.plotFloorSpeed * 3
+                #TODO: maybe make a proportional speed from how far to the flood surface
+                self.velocities[posIdx] = (self.velocities[posIdx][0],self.plotFloorSpeed * 3 / self.deltaTime)        
+        pos[0] = self.particleList[posIdx][0] + self.velocities[posIdx][0] * self.deltaTime
+        pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
 
         collisionIdx = self.detectCollision(pos)
         if collisionIdx != -1:
@@ -200,11 +200,9 @@ class SPH:
             collisionEdgeNormal = self.obstacleEdgeNormals[collisionIdx][collisionEdge]
             collisionEdgeParallel = (-collisionEdgeNormal[1],collisionEdgeNormal[0])
             # Project velocity onto normal and parallel components
-            #v_normal = (self.velocities[posIdx][0] * collisionEdgeNormal[0] + self.velocities[posIdx][1] * collisionEdgeNormal[1])/(math.sqrt(collisionEdgeNormal[0] * collisionEdgeNormal[0] + collisionEdgeNormal[1] * collisionEdgeNormal[1]))
-            #v_parallel = (self.velocities[posIdx][0] * collisionEdgeParallel[0] + self.velocities[posIdx][1] * collisionEdgeParallel[1])/(math.sqrt(collisionEdgeParallel[0] * collisionEdgeParallel[0] + collisionEdgeParallel[1] * collisionEdgeParallel[1]))
             v_normal = (self.velocities[posIdx][0] * collisionEdgeNormal[0] + self.velocities[posIdx][1] * collisionEdgeNormal[1])
             v_parallel = (self.velocities[posIdx][0] * collisionEdgeParallel[0] + self.velocities[posIdx][1] * collisionEdgeParallel[1])
-            print(f'particle {posIdx} ori velocity is {self.velocities[posIdx][0]:.4f},{self.velocities[posIdx][1]:.4f}')
+            #print(f'particle {posIdx} ori velocity is {self.velocities[posIdx][0]:.4f},{self.velocities[posIdx][1]:.4f}')
             # Update velocity based on collision response
             if self.gravityOn:
                 # Reflect normal component with damping, preserve parallel component
@@ -215,13 +213,10 @@ class SPH:
                 # Zero out normal component, preserve parallel component
                 self.velocities[posIdx] = (v_parallel * collisionEdgeParallel[0],
                                             v_parallel * collisionEdgeParallel[1])
-            print(f'particle {posIdx} new velocity is {self.velocities[posIdx][0]:.4f},{self.velocities[posIdx][1]:.4f}')
+            #print(f'particle {posIdx} new velocity is {self.velocities[posIdx][0]:.4f},{self.velocities[posIdx][1]:.4f}')
             # Update position
             pos[0] = self.particleList[posIdx][0] + self.velocities[posIdx][0] * self.deltaTime
             pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
-            
-            #find the normal of this and flip sign, and leave the parallel vector (with grav)
-            #find the normal of this and reduce to 0, and only leave the parallel vector (no grav)
         return (pos[0],pos[1])
     
     def viscositySmoothingKernel(self,radius,dist):
