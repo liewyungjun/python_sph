@@ -136,10 +136,52 @@ class SPH_3D:
                     pos[2] = self.particleList[posIdx][2] + self.velocities[posIdx][2] * self.deltaTime
             else:
                 pos[2] = self.particleList[posIdx][2]
-            # if self.floodRising and pos[1] < self.plotFloor: #below flood level
-            #     #pos[1] = self.plotFloor
-            #     pos[1] += self.plotFloorSpeed * 3
-
+        if self.floodRising and pos[1] < self.plotFloor: #below flood level
+            #pos[1] = self.plotFloor
+            pos[1] += self.plotFloorSpeed * 3
+        # Check for collision with obstacles (cuboids)
+        for obstacle in obstacles:
+            center, size, _ = obstacle  # Unpack obstacle properties
+            # Calculate obstacle bounds
+            x_min = center[0] - size[0]/2
+            x_max = center[0] + size[0]/2
+            y_min = center[1] - size[1]/2
+            y_max = center[1] + size[1]/2
+            z_min = center[2] - size[2]/2
+            z_max = center[2] + size[2]/2
+            
+            # Check if particle is inside obstacle bounds
+            if (x_min < pos[0] < x_max and 
+                y_min < pos[1] < y_max and 
+                z_min < pos[2] < z_max):
+                
+                # Determine which face was hit by comparing previous position
+                pre_pos = self.particleList[posIdx]
+                
+                # X-axis collision
+                if pre_pos[0] <= x_min or pre_pos[0] >= x_max:
+                    if self.gravityOn:
+                        self.velocities[posIdx][0] = -self.velocities[posIdx][0] * self.collisionDamping
+                        pos[0] = pre_pos[0] + self.velocities[posIdx][0] * self.deltaTime
+                    else:
+                        pos[0] = pre_pos[0]
+                
+                # Y-axis collision
+                if pre_pos[1] <= y_min or pre_pos[1] >= y_max:
+                    if self.gravityOn:
+                        self.velocities[posIdx][1] = -self.velocities[posIdx][1] * self.collisionDamping
+                        pos[1] = pre_pos[1] + self.velocities[posIdx][1] * self.deltaTime
+                    else:
+                        pos[1] = pre_pos[1]
+                
+                # Z-axis collision
+                if pre_pos[2] <= z_min or pre_pos[2] >= z_max:
+                    if self.gravityOn:
+                        self.velocities[posIdx][2] = -self.velocities[posIdx][2] * self.collisionDamping
+                        pos[2] = pre_pos[2] + self.velocities[posIdx][2] * self.deltaTime
+                    else:
+                        pos[2] = pre_pos[2]
+        
         # for i in obstacles:
         #     precollisionx = self.particleList[posIdx][0]>i[0][0] and self.particleList[posIdx][0]<i[1][0]
         #     precollisiony = self.particleList[posIdx][1]<i[0][1] and self.particleList[posIdx][1]>i[3][1]
@@ -186,7 +228,7 @@ class SPH_3D:
     def step(self):
 
         for i in range(self.numParticles):#add gravity
-            self.velocities[i][2] -= self.gravity * self.deltaTime
+            #self.velocities[i][1] -= self.gravity * self.deltaTime
 
             self.predictedPositions[i] = self.particleList[i] + self.velocities[i] * self.deltaTime
         

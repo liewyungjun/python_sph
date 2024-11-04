@@ -1,6 +1,7 @@
 import math 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib.patches import Rectangle
 import sph_3D
 
@@ -23,8 +24,8 @@ gridSpacing = 10
 #Simulation physics setup
 #obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)]] #TODO: add 3D
 obstacleList = []
-numParticles = 100
-floodRising = False
+numParticles = 20
+floodRising = True
 gravityOn = False
 
 #pressureMultiplier = 20000
@@ -43,8 +44,8 @@ bodyforce = [0,0.0,-20.0] #TODO: z or y is down??  #only when gravity is turned 
 viscosityStrength = 0
 
 #Tools
-save = False
-savename = "cupCoveredTop_noG.mp4"
+save = True
+savename = "3D.mp4"
 debug = False
 mapname = "upcup"
 
@@ -67,7 +68,7 @@ def generateParticleGrid(numParticles):#particle generation
                 rownum +=1
             x = i%x_cap * gridSpacing
             y = y_offset * gridSpacing
-            particleList.append([x,y,0.0])
+            particleList.append([x,y,15.0])
     particleList[-1] = [x,y,5.0]
             
     # particleGridLength = plotSize*ratio[0] * 0.8
@@ -103,11 +104,38 @@ def readMap(mapname):
         #obstacleList = [[(x, y) for x, y in points]]
         return obstacleList
     
+def create_cuboid(center, size):
+    x, y, z = center
+    dx, dy, dz = size
+    vertices = np.array([
+        [x-dx/2, y-dy/2, z-dz/2],
+        [x+dx/2, y-dy/2, z-dz/2],
+        [x+dx/2, y+dy/2, z-dz/2],
+        [x-dx/2, y+dy/2, z-dz/2],
+        [x-dx/2, y-dy/2, z+dz/2],
+        [x+dx/2, y-dy/2, z+dz/2],
+        [x+dx/2, y+dy/2, z+dz/2],
+        [x-dx/2, y+dy/2, z+dz/2]
+    ])
+    faces = [
+        [vertices[0], vertices[1], vertices[2], vertices[3]],
+        [vertices[4], vertices[5], vertices[6], vertices[7]],
+        [vertices[0], vertices[1], vertices[5], vertices[4]],
+        [vertices[2], vertices[3], vertices[7], vertices[6]],
+        [vertices[1], vertices[2], vertices[6], vertices[5]],
+        [vertices[0], vertices[3], vertices[7], vertices[4]]
+    ]
+    return faces
 #obstacleList = readMap(mapname)
-
+cuboids = [
+    ((75, 150, 0), (20, 20, 40), 'red'),
+    ((40, 70, 0), (20, 20, 40), 'grey'),
+    ((120, 50, 0), (20, 20, 40), 'green'),
+    ((20, 190, 0),(20, 20, 40), 'yellow')
+]
 generateParticleGrid(numParticles)
 
-SPHObject = sph_3D.SPH_3D(particleList=particleList,obstacleList=obstacleList,numParticles=numParticles,plotSize=plotSize,plotFloor=plotFloor,\
+SPHObject = sph_3D.SPH_3D(particleList=particleList,obstacleList=cuboids,numParticles=numParticles,plotSize=plotSize,plotFloor=plotFloor,\
                     debug=debug,ratio=ratio,gravityOn=gravityOn,floodRising=floodRising,\
                     pressureMultiplier=pressureMultiplier,targetDensity=targetDensity,\
                     smoothingRadius=smoothingRadius,collisionDamping=collisionDamping,mass=mass,gravity=gravity,deltaTime=deltaTime,\
@@ -131,9 +159,20 @@ ax.set_xlim(x_limits)
 ax.set_ylim(y_limits)
 ax.set_zlim(z_limits)
 ax.set_box_aspect([1, 1, 1])
-plt.xticks(np.arange(x_limits[0], x_limits[1], 5.0))
+#plt.xticks(np.arange(x_limits[0], x_limits[1], 5.0))
 plt.title(f"SPH Simulation\nParticles: {numParticles}, Target Density: {targetDensity:.2e}")
 ax.set_position([0.1, 0.1, 0.8, 0.8])
+ax.set_proj_type('persp')  # Use perspective projection
+#ax.set_sort_zpos(True)
+
+
+# Plot each cuboid
+for center, size, color in cuboids:
+    faces = create_cuboid(center, size)
+    ax.add_collection3d(Poly3DCollection(faces, facecolor=color, alpha=1.0, edgecolor='k',sort_zpos=True, zorder =2))
+    #collection.set_sort_zpos(True)
+    #ax.add_collection3d(collection)
+
 
 for obstacle in obstacleList:
     rect = Rectangle((obstacle[3][0], obstacle[3][1]), obstacle[1][0] - obstacle[0][0],obstacle[0][1] - obstacle[3][1], fill=True, facecolor='gray')
@@ -143,8 +182,13 @@ for obstacle in obstacleList:
 # Initialize the balls
 ballaxs = []
 for i in range(numParticles):
-    ballaxs.append(ax.plot([], [], [], 'b^', markersize=markersize)[0])
-#floorLine = ax.axhline(y=SPHObject.plotFloor, color='red', linestyle='-')
+    ballaxs.append(ax.plot([], [], [], 'b^', markersize=markersize,zorder = 1)[0])
+
+# Create the line at initialization
+x_line = np.linspace(x_limits[0], x_limits[1], 2)
+y_line = np.full_like(x_line, SPHObject.plotFloor)
+z_line = np.zeros_like(x_line)
+floor_line = ax.plot(x_line, y_line, z_line, 'r-', linewidth=2)[0]
 
 def update(frame):
     # Update position and velocity for both balls
@@ -159,13 +203,10 @@ def update(frame):
     if frame > floodRisingFrameStart and floodRising:
         #print("floodrising")
         SPHObject.plotFloor +=plotFloorSpeed
-        #floorLine.set_ydata([SPHObject.plotFloor, SPHObject.plotFloor])
-    #if frame > floodRisingFrameStart and not floodRising:
-        #print("bodyforce changed")
-        #SPHObject.bodyforce = (-bodyforce[0],-bodyforce[1])
-
-    #return ballaxs + [floorLine]
-    return ballaxs 
+        y_line = np.full_like(x_line, SPHObject.plotFloor)
+        floor_line.set_data_3d(x_line, y_line, z_line)
+    
+    return ballaxs + [floor_line]
 
 # Create the animation
 anim = animation.FuncAnimation(fig, update, frames=simulationsteps, interval=deltaTime * 1000, blit=True,repeat=False)
