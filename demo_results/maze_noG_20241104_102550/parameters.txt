@@ -1,0 +1,29 @@
+Simulation Parameters:
+------------------------------------
+Simulation graphical setup
+Simulation Steps: 2000
+Particle Marker Size: 2
+Plot size: 50.0
+Ratio: (3, 6)
+Axes Scaling: 10
+Flood Rising Frame Start: 50
+Plot floor: 0.0
+Plot Floor Speed: 0.2
+X Limits: (0, 150.0)
+Y Limits: (0, 300.0)
+------------------------------------
+Simulation physics setup
+Obstacle list: [[[72.53, 195.18], [155.0, 195.18], [155.0, 189.01], [72.53, 189.01]], [[-3.97, 172.56], [98.75, 172.56], [98.75, 158.47], [-3.97, 158.47]], [[122.2, 168.34], [128.68, 168.34], [128.68, 108.8], [122.2, 108.8]], [[29.34, 135.33], [62.35, 135.33], [62.35, 98.32], [29.34, 98.32]], [[78.39, 80.11], [155.0, 80.11], [155.0, 65.0], [78.39, 65.0]], [[84.56, 139.04], [90.12, 139.04], [90.12, 95.54], [84.56, 95.54]], [[-5.0, 82.89], [31.19, 82.89], [31.19, 64.07], [-5.0, 64.07]], [[-5.0, 139.04], [8.67, 139.04], [8.67, 106.34], [-5.0, 106.34]], [[6.82, 221.09], [16.7, 221.09], [16.7, 196.42], [6.82, 196.42]]]
+Number of Particles: 25
+Flood Rising: True
+GravityOn: False
+Pressure multiplier: 500000
+Target density: 0.002
+Smoothing radius: 40.0
+Collision damping: 0.8
+Mass: 1.0
+Gravity: 10.0
+Delta time: 0.02
+VelDamp: 1.0
+Body Force: (0, -20.0)
+Viscosity strength: 0
