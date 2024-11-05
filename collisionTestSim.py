@@ -1,7 +1,8 @@
 import math 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Polygon
+
 import sph
 
 import os
@@ -19,13 +20,11 @@ plotFloor = 0.0
 plotFloorSpeed = 0.2
 
 #Simulation physics setup
-obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)]]
-numParticles = 3
+obstacleList = [[[75.98, 31.76], [57.23, 49.03], [110.78, 85.56], [114.23, 64.58]],[[70,35], [70,80], [120,80], [120,30]]]
+numParticles = 1
 floodRising = True
 gravityOn = False
 
-#pressureMultiplier = 200
-#pressureMultiplier = 100000
 pressureMultiplier = 500000
 targetDensity = 0.002
 smoothingRadius = 40.0
@@ -35,45 +34,14 @@ gravity = 10.0
 deltaTime = 0.02
 velDamp = 1.0
 bodyforce = (0,-20.0) #only when gravity is turned off
-#bodyforce = (0,0)
-#viscosityStrength = 200
 viscosityStrength = 0
 
-#Tools
-save = False
-savename = "test.mp4"
-debug = False
-
-#particleList = [(25,10),(45,10),(75,10),(95,10)]
-particleList = [(85,25),(95,25),(100,25)]
+particleList = [(80,40)]
+velocity = (0,4)
 rectangles = []
 
-def generateParticleGrid(numParticles):#particle generation
-    particleGridLength = plotSize*ratio[0] * 0.8
-    gridSize = int(math.sqrt(numParticles))
-    if gridSize == 0 or gridSize == 1:
-        gridSize = numParticles
-    if gridSize == 1:
-        spacing = particleGridLength
-    else:
-        spacing = particleGridLength / (gridSize - 1)
-    offset = (plotSize*ratio[0] * 0.1,0)
-    if gridSize == numParticles:
-        print("small case")
-        for i in range(gridSize):
-            x = i * spacing + offset[0]
-            y = offset[1]
-            particleList.append((x, y))
-    else:
-        for i in range(gridSize):
-            for j in range(gridSize):
-                x = i * spacing + offset[0]
-                y = j * spacing + offset[1]
-                particleList.append((x, y))
-
-#generateParticleGrid(numParticles)
 SPHObject = sph.SPH(particleList=particleList,obstacleList=obstacleList,numParticles=numParticles,plotSize=plotSize,plotFloor=plotFloor,\
-                    debug=debug,ratio=ratio,gravityOn=gravityOn,floodRising=floodRising,\
+                    debug=False,ratio=ratio,gravityOn=gravityOn,floodRising=floodRising,\
                     pressureMultiplier=pressureMultiplier,targetDensity=targetDensity,\
                     smoothingRadius=smoothingRadius,collisionDamping=collisionDamping,mass=mass,gravity=gravity,deltaTime=deltaTime,\
                     velDamp=velDamp,bodyforce=bodyforce,plotFloorSpeed=plotFloorSpeed,viscosityStrength=viscosityStrength)
@@ -98,88 +66,88 @@ plt.title(f"SPH Simulation\nParticles: {numParticles}, Target Density: {targetDe
 ax.set_position([0.1, 0.1, 0.8, 0.8])
 
 for obstacle in obstacleList:
-    rect = Rectangle((obstacle[3][0], obstacle[3][1]), obstacle[1][0] - obstacle[0][0],obstacle[0][1] - obstacle[3][1], fill=True, facecolor='gray')
-    ax.add_patch(rect)
-    rectangles.append(rect)
+    polygon = Polygon(obstacle, facecolor='gray', alpha=0.5)
+    ax.add_patch(polygon)
 
 # Initialize the balls
 ballaxs = []
 for i in range(numParticles):
-    ballaxs.append(ax.plot([], [], 'b^', markersize=markersize)[0])
+    ballaxs.append(ax.plot([SPHObject.particleList[i][0]], [SPHObject.particleList[i][1]], 'b^', markersize=markersize)[0])
 floorLine = ax.axhline(y=SPHObject.plotFloor, color='red', linestyle='-')
+collisionIdxs = SPHObject.detectCollision(particleList[0])
 
-def update(frame):
-    # Update position and velocity for both balls
-    SPHObject.step()
-    # print("densities table")
-    # for i in range(len(SPHObject.densities)):
-    #     print(f'{i}: {SPHObject.densities[i]}')
-    #update ball loc 
-    for i in range(len(ballaxs)):
-        ballaxs[i].set_data([SPHObject.particleList[i][0]],[SPHObject.particleList[i][1]])
-    print(f'{frame}----------------')
-    if frame > floodRisingFrameStart and floodRising:
-        #print("floodrising")
-        SPHObject.plotFloor +=plotFloorSpeed
-        floorLine.set_ydata([SPHObject.plotFloor, SPHObject.plotFloor])
-    if frame > floodRisingFrameStart and not floodRising:
-        print("bodyforce changed")
-        SPHObject.bodyforce = (-bodyforce[0],-bodyforce[1])
+if collisionIdxs:
+    collisionEdges = SPHObject.findCollisionEdge(collisionIdxs,0)
+    for j in collisionEdges:
+        collisionIdx = j[0]
+        collisionEdge = j[1]
+        collisionEdgeNormal = SPHObject.obstacleEdgeNormals[collisionIdx][collisionEdge]
+        collisionEdgeParallel = (-collisionEdgeNormal[1],collisionEdgeNormal[0])
+        v_normal = (velocity[0] * collisionEdgeNormal[0] + velocity[1] * collisionEdgeNormal[1])
+        v_parallel = (velocity[0] * collisionEdgeParallel[0] + velocity[1] * collisionEdgeParallel[1])
+        # Update velocity based on collision response
+        if gravityOn:
+            # Reflect normal component with damping, preserve parallel component
+            new_v_normal = -v_normal * 0.5
+            new_velocity = (new_v_normal * collisionEdgeNormal[0] + v_parallel * collisionEdgeParallel[0],
+                                        new_v_normal * collisionEdgeNormal[1] + v_parallel * collisionEdgeParallel[1])
+        else:
+            # Zero out normal component, preserve parallel component
+            new_velocity = (v_parallel * collisionEdgeParallel[0],
+                                        v_parallel * collisionEdgeParallel[1])
+        # Plot normal vector
+        normal_scale = 20  # Scale factor for the normal vector
+        ax.quiver(SPHObject.particleList[0][0], SPHObject.particleList[0][1], 
+                    collisionEdgeNormal[0], collisionEdgeNormal[1], 
+                    angles='xy', scale_units='xy', scale=1/normal_scale,
+                    color='g', label='Normal Vector')
+        
+        ax.quiver(SPHObject.particleList[0][0], SPHObject.particleList[0][1], 
+                    collisionEdgeParallel[0], collisionEdgeParallel[1], 
+                    angles='xy', scale_units='xy', scale=1/normal_scale,
+                    color='k', label='Parallel Vector')
+        
+        ax.quiver(SPHObject.particleList[0][0], SPHObject.particleList[0][1], 
+                    new_velocity[0], new_velocity[1],
+                    angles='xy', scale_units='xy', scale=1/normal_scale,
+                    color='r', label='new vel Vector')
+                    
+        print(f'ori vel was {velocity} new vel is {new_velocity}')
+        nextIdx = 0 if collisionEdge == len(obstacleList[collisionIdx]) - 1 else collisionEdge + 1
+        x_values = [obstacleList[collisionIdx][collisionEdge][0], obstacleList[collisionIdx][nextIdx][0]]
+        y_values = [obstacleList[collisionIdx][collisionEdge][1], obstacleList[collisionIdx][nextIdx][1]]
+        # if collisionEdge == len(obstacleList[collisionIdx]) - 1:
+        #     x_values = [obstacleList[collisionIdx][collisionEdge][0], obstacleList[collisionIdx][0][0]]
+        #     y_values = [obstacleList[collisionIdx][collisionEdge][1], obstacleList[collisionIdx][0][1]]
+        # else:
+        #     x_values = [obstacleList[collisionIdx][collisionEdge][0], obstacleList[collisionIdx][collisionEdge+1][0]]
+        #     y_values = [obstacleList[collisionIdx][collisionEdge][1], obstacleList[collisionIdx][collisionEdge+1][1]]
+        ax.plot(x_values, y_values, 'bo', linestyle="--")
 
-    return ballaxs + [floorLine]
-    #return ballaxs 
-
-# Create the animation
-anim = animation.FuncAnimation(fig, update, frames=simulationsteps, interval=deltaTime * 1000, blit=True,repeat=False)
-if save:
-    # Create timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    # Create folder name with simulation name and timestamp
-    folder_name = f"results/{savename.split('.')[0]}_{timestamp}"
-    
-    # Create folders if they don't exist
-    os.makedirs(folder_name, exist_ok=True)
-    
-    # Update save path to include new folder
-    save_path = os.path.join(folder_name, savename)
-    
-    # Save animation to the new folder
-    writervideo = animation.FFMpegWriter(fps=60)
-    anim.save(save_path, writer=writervideo)
-    
-    # Create and write parameters to txt file
-    params_file = os.path.join(folder_name, "parameters.txt")
-    with open(params_file, "w") as f:
-        f.write(f"Simulation Parameters:\n")
-        f.write(f"------------------------------------\n")
-        f.write(f"Simulation graphical setup\n")
-        f.write(f"Simulation Steps: {simulationsteps}\n")
-        f.write(f"Particle Marker Size: {particleMarkerSize}\n")
-        f.write(f'Plot size: {plotSize}\n')
-        f.write(f'Ratio: {ratio}\n')
-        f.write(f"Axes Scaling: {axesScaling}\n")
-        f.write(f"Flood Rising Frame Start: {floodRisingFrameStart}\n")
-        f.write(f'Plot floor: {plotFloor}\n')
-        f.write(f"Plot Floor Speed: {plotFloorSpeed}\n")
-        f.write(f"X Limits: {x_limits}\n")
-        f.write(f"Y Limits: {y_limits}\n")
-        f.write(f"------------------------------------\n")
-        f.write(f"Simulation physics setup\n")
-        f.write(f'Obstacle list: {obstacleList}\n')
-        f.write(f"Number of Particles: {numParticles}\n")
-        f.write(f"Flood Rising: {floodRising}\n")
-        f.write(f'GravityOn: {gravityOn}\n')
-        f.write(f'Pressure multiplier: {pressureMultiplier}\n')
-        f.write(f'Target density: {targetDensity}\n')
-        f.write(f'Smoothing radius: {smoothingRadius}\n')
-        f.write(f'Collision damping: {collisionDamping}\n')
-        f.write(f'Mass: {mass}\n')
-        f.write(f'Gravity: {gravity}\n')
-        f.write(f'Delta time: {deltaTime}\n')
-        f.write(f'VelDamp: {velDamp}\n')
-        f.write(f"Body Force: {bodyforce}\n")
-        f.write(f'Viscosity strength: {viscosityStrength}\n')
+# Plot all edge normals
+normal_scale = 20  # Scale factor for the normal vectors
+for i, obstacle in enumerate(obstacleList):
+    for j in range(len(obstacle)):
+        # Get edge points
+        edge1 = obstacle[j]
+        edge2 = obstacle[0] if j == len(obstacle)-1 else obstacle[j+1]
+        
+        # Calculate midpoint of edge for normal vector origin
+        midpoint_x = (edge1[0] + edge2[0]) / 2
+        midpoint_y = (edge1[1] + edge2[1]) / 2
+        
+        # Get normal vector for this edge
+        normal = SPHObject.obstacleEdgeNormals[i][j]
+        
+        # Plot normal vector from edge midpoint
+        ax.quiver(midpoint_x, midpoint_y,
+                 normal[0], normal[1],
+                 angles='xy', scale_units='xy', scale=1/normal_scale,
+                 color='r', alpha=0.5)
+ax.quiver(SPHObject.particleList[0][0], SPHObject.particleList[0][1], 
+                velocity[0], velocity[1], 
+                angles='xy', scale_units='xy', scale=1/normal_scale,
+                color='y', label='ori vel Vector')
 
 plt.title(f"SPH Simulation\nParticles: {numParticles}, Target Density: {targetDensity:.2e}")
 plt.xlabel("X")

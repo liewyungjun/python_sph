@@ -123,6 +123,7 @@ class SPH:
         return res
     
     def detectCollision(self,point):
+        res = []
         for i in range(len(self.obstacleEdgeNormals)): #for each obstacle
             collision = True
             #print(f'checking {len(self.obstacleEdgeNormals[i])} normals')
@@ -147,29 +148,33 @@ class SPH:
                     break
             if collision:
                 #print(f'COLLISION between {point} and {self.obstacleList[i]}')
-                return i
-        return -1
+                res.append(i)
+        return res
 
-    def findCollisionEdge(self,obstacleIdx,particleIdx):
+    def findCollisionEdge(self,obstacleIdxs,particleIdx):
         min_distance = 999
+        nearest_edges = []
         nearest_edge = -1
-        for j in range(len(self.obstacleList[obstacleIdx])):
-            edge1 = self.obstacleList[obstacleIdx][j]
-            if j == len(self.obstacleList[obstacleIdx])-1:
-                edge2 = self.obstacleList[obstacleIdx][0]
-            else:
-                edge2 = self.obstacleList[obstacleIdx][j+1]
-            # print(edge1)
-            # print(edge2)
-            parallelogram_area = abs((edge2[0]-edge1[0]) * (self.particleList[particleIdx][1]-edge1[1]) - (edge2[1]-edge1[1]) * (self.particleList[particleIdx][0]-edge1[0]))
-            base = math.sqrt((edge1[0]-edge2[0])*(edge1[0]-edge2[0])+(edge1[1]-edge2[1])*(edge1[1]-edge2[1]))
-            distance = parallelogram_area/base
-            #print(f'distance:{distance} edge:{j} between {edge1} and {edge2}')
-            if distance < min_distance:
-                min_distance = distance
-                nearest_edge = j
-        #print(f'nearest edge is {nearest_edge}')
-        return nearest_edge
+        for obstacleIdx in obstacleIdxs: #for each obstacle
+            min_distance = 999
+            for j in range(len(self.obstacleList[obstacleIdx])): #for each obstacle edge
+                edge1 = self.obstacleList[obstacleIdx][j]
+                if j == len(self.obstacleList[obstacleIdx])-1:
+                    edge2 = self.obstacleList[obstacleIdx][0]
+                else:
+                    edge2 = self.obstacleList[obstacleIdx][j+1]
+                # print(edge1)
+                # print(edge2)
+                parallelogram_area = abs((edge2[0]-edge1[0]) * (self.particleList[particleIdx][1]-edge1[1]) - (edge2[1]-edge1[1]) * (self.particleList[particleIdx][0]-edge1[0]))
+                base = math.sqrt((edge1[0]-edge2[0])*(edge1[0]-edge2[0])+(edge1[1]-edge2[1])*(edge1[1]-edge2[1]))
+                distance = parallelogram_area/base
+                #print(f'distance:{distance} edge:{j} between {edge1} and {edge2}')
+                if distance < min_distance:
+                    min_distance = distance
+                    nearest_edge = j
+            nearest_edges.append((obstacleIdx,nearest_edge))
+        #print(f'nearest edges are {nearest_edges}')
+        return nearest_edges
     
     def resolveCollisions(self,pos,posIdx,obstacles):
         # Check for collision with side walls
@@ -197,10 +202,10 @@ class SPH:
         pos[0] = self.particleList[posIdx][0] + self.velocities[posIdx][0] * self.deltaTime
         pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
 
-        collisionIdx = self.detectCollision(pos)
-        if collisionIdx != -1:
-            collisionEdge = self.findCollisionEdge(collisionIdx,posIdx)
-            collisionEdgeNormal = self.obstacleEdgeNormals[collisionIdx][collisionEdge]
+        collisionIdxs = self.detectCollision(pos)
+        if collisionIdxs != -1:
+            collisionEdges = self.findCollisionEdge(collisionIdxs,posIdx)
+            collisionEdgeNormal = self.obstacleEdgeNormals[collisionIdxs[0]][collisionEdges[0]]
             collisionEdgeParallel = (-collisionEdgeNormal[1],collisionEdgeNormal[0])
             # Project velocity onto normal and parallel components
             v_normal = (self.velocities[posIdx][0] * collisionEdgeNormal[0] + self.velocities[posIdx][1] * collisionEdgeNormal[1])
