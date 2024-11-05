@@ -27,10 +27,11 @@ gridSpacing = 10
 obstacleList = [[(70,50),(100,50),(100,30),(70,30)],[(15,120),(65,120),(65,90),(15,90)]]
 numParticles = 25
 floodRising = True
-gravityOn = False
+gravityOn = True
 
 if gravityOn:
-    pressureMultiplier = 10000
+    #pressureMultiplier = 10000
+    pressureMultiplier = 80000
     targetDensity = 0.002
 else:
     pressureMultiplier = 500000
@@ -44,16 +45,17 @@ velDamp = 1.0
 bodyforce = (0,-20.0) #only when gravity is turned off
 #bodyforce = (0,0)
 #viscosityStrength = 200
-viscosityStrength = 0
+viscosityStrength = 1000
 
 #Tools
 save = True
 results_path = "demo_results"
-savename = "maze_noG.mp4"
+savename = "maze_G_V1000.mp4"
 debug = False
 loadmap = True
 loadpath = "demo_maps"
 mapname = "maze"
+trails = False
 
 particleList = []
 polygons = []
@@ -75,28 +77,6 @@ def generateParticleGrid(numParticles):#particle generation
             x = i%x_cap * gridSpacing
             y = y_offset * gridSpacing
             particleList.append((x,y))
-            
-    # particleGridLength = plotSize*ratio[0] * 0.8
-    # gridSize = int(math.sqrt(numParticles))
-    # if gridSize == 0 or gridSize == 1:
-    #     gridSize = numParticles
-    # if gridSize == 1:
-    #     spacing = particleGridLength
-    # else:
-    #     spacing = particleGridLength / (gridSize - 1)
-    # offset = (plotSize*ratio[0] * 0.1,0)
-    # if gridSize == numParticles:
-    #     print("small case")
-    #     for i in range(gridSize):
-    #         x = i * spacing + offset[0]
-    #         y = offset[1]
-    #         particleList.append((x, y))
-    # else:
-    #     for i in range(gridSize):
-    #         for j in range(gridSize):
-    #             x = i * spacing + offset[0]
-    #             y = j * spacing + offset[1]
-    #             particleList.append((x, y))
 
 def readMap(mapname):
     with open(f'{loadpath}/{mapname}.txt', 'r') as f:
@@ -146,32 +126,46 @@ for obstacle in obstacleList:
     polygons.append(polygon)
 # Initialize the balls
 ballaxs = []
+trajs = []
+traj_hist = []
 for i in range(numParticles):
     ballaxs.append(ax.plot([], [], 'b^', markersize=markersize)[0])
+    trajs.append(ax.plot([], [], 'c.', markersize=markersize, alpha = 0.1)[0])
+    traj_hist.append([])
 floorLine = ax.axhline(y=SPHObject.plotFloor, color='red', linestyle='-')
+trail_artists = []
+
+
+
 
 def update(frame):
     # Update position and velocity for both balls
-    # if frame ==5:
-    #     time.sleep(2)
     SPHObject.step()
     # print("densities table")
     # for i in range(len(SPHObject.densities)):
     #     print(f'{i}: {SPHObject.densities[i]}')
+
     #update ball loc 
     for i in range(len(ballaxs)):
         ballaxs[i].set_data([SPHObject.particleList[i][0]],[SPHObject.particleList[i][1]])
+        if trails:
+            if frame == 0:
+                traj_hist[i] = [[SPHObject.particleList[i][0]],[SPHObject.particleList[i][1]]]
+            else:
+                traj_hist[i][0].append(SPHObject.particleList[i][0])
+                traj_hist[i][1].append(SPHObject.particleList[i][1])
+            #print(traj_hist)
+            trajs[i].set_data([traj_hist[i][0]],[traj_hist[i][1]])
+        # TODO: Add trace marker
     print(f'{frame}----------------')
     if frame > floodRisingFrameStart and floodRising:
-        #print("floodrising")
         SPHObject.plotFloor +=plotFloorSpeed
         floorLine.set_ydata([SPHObject.plotFloor, SPHObject.plotFloor])
     # if frame > floodRisingFrameStart and not floodRising:
     #     print("bodyforce changed")
     #     SPHObject.bodyforce = (-bodyforce[0],-bodyforce[1])
 
-    return ballaxs + [floorLine]
-    #return ballaxs 
+    return ballaxs + [floorLine] + trajs
 
 # Create the animation
 anim = animation.FuncAnimation(fig, update, frames=simulationsteps, interval=deltaTime * 1000, blit=True,repeat=False)
@@ -180,7 +174,7 @@ if save:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
     # Create folder name with simulation name and timestamp
-    folder_name = f"{results_path}/{savename.split('.')[0]}_{timestamp}"
+    folder_name = f"{results_path}/{timestamp}_{savename.split('.')[0]}"
     
     # Create folders if they don't exist
     os.makedirs(folder_name, exist_ok=True)
