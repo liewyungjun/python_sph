@@ -1,10 +1,16 @@
-# An implementation of Smoothed Particle Dynamics in python and visualised in matplotlib.
+# An implementation of Smoothed Particle Dynamics for swarm control in python and visualised in matplotlib.
 
-
-[![Watch the video](https://raw.githubusercontent.com/liewyungjun/python_sph/main/demo_results/maze_G_trail_20241105_123800.jpg)](https://raw.githubusercontent.com/liewyungjun/python_sph/main/demo_results/maze_G_trail_20241105_123800/maze_G_trail.mp4)
 
 https://github.com/user-attachments/assets/763f91d5-419b-454e-b388-233fcbbe6695
-https://github.com/user-attachments/assets/598589f9-8cce-4120-97e4-4199228337b1
+
+https://github.com/user-attachments/assets/17837508-8c26-4b13-a4c6-9156e888635b
+
+
+
+https://github.com/user-attachments/assets/8e47c300-7975-4434-a9a6-1e7bcdc52fe3
+
+
+
 ## Tools
 mapmaker.py creates and saves maps in matplotlib using mouse clicks
 collisionTestSim.py illustrates collision vector
