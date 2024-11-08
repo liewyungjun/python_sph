@@ -21,7 +21,7 @@ class SPH:
         self.targetDensity = targetDensity
         self.smoothingRadius = smoothingRadius
         self.collisionDamping = collisionDamping
-        self.mass = mass
+        self.mass = [mass for i in range(numParticles)]
         self.gravity = gravity
         self.deltaTime = deltaTime
         self.velDamp = velDamp
@@ -54,12 +54,19 @@ class SPH:
         
     def calculateDensity(self,point):
         density = 0.0
+        bottom = True
         for i in range(self.numParticles): #except youtself
             dist = math.dist(self.predictedPositions[point],self.predictedPositions[i])
+            if self.predictedPositions[point][1] > self.predictedPositions[i][1]:
+                bottom = False
             influence = self.smoothingKernel(self.smoothingRadius,dist)
-            density += self.mass * influence
+            # if i == point:
+            #     continue
+            density += self.mass[i] * influence
             # if influence >0:
             #     print(f'density contribution to {point} of {i} is {influence} with distance {dist}')
+        # if bottom:
+        #     self.mass[point] += 0.02
         if density < 1e-7:
             print(f"{point} density zero")
         return density
@@ -96,9 +103,9 @@ class SPH:
             #                  pressureForce[1] + \
             #                  self.densityToPressure(sharedPressure) * diry * slope * self.mass / density)
             pressureForce = (pressureForce[0] + \
-                             sharedPressure * dirx * slope * self.mass / density, \
+                             sharedPressure * dirx * slope * self.mass[i] / density, \
                              pressureForce[1] + \
-                             sharedPressure * diry * slope * self.mass / density)
+                             sharedPressure * diry * slope * self.mass[i] / density)
             # print(f'sharedPressure is {sharedPressure}')
             # print(f'Other is {self.densityToPressure(sharedPressure)}')
             # print(f'pressureforce is {pressureForce}')
@@ -149,6 +156,7 @@ class SPH:
             if collision:
                 #print(f'COLLISION between {point} and {self.obstacleList[i]}')
                 res.append(i)
+        #print(res)
         return res
 
     def findCollisionEdge(self,obstacleIdxs,particleIdx):
@@ -203,9 +211,9 @@ class SPH:
         pos[1] = self.particleList[posIdx][1] + self.velocities[posIdx][1] * self.deltaTime
 
         collisionIdxs = self.detectCollision(pos)
-        if collisionIdxs != -1:
-            collisionEdges = self.findCollisionEdge(collisionIdxs,posIdx)
-            collisionEdgeNormal = self.obstacleEdgeNormals[collisionIdxs[0]][collisionEdges[0]]
+        if collisionIdxs:
+            collisionEdges = self.findCollisionEdge(collisionIdxs,posIdx)[0]
+            collisionEdgeNormal = self.obstacleEdgeNormals[collisionIdxs[0]][collisionEdges[1]]
             collisionEdgeParallel = (-collisionEdgeNormal[1],collisionEdgeNormal[0])
             # Project velocity onto normal and parallel components
             v_normal = (self.velocities[posIdx][0] * collisionEdgeNormal[0] + self.velocities[posIdx][1] * collisionEdgeNormal[1])
