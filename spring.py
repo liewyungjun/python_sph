@@ -4,6 +4,7 @@ import numpy as np
 comms_radius = 3.0
 target_separation=0.8
 repulsion_distance=0.3
+debug_id = -1
 
 class Spring:
     def __init__(self,id,startPos,plotSize,obstacleList = []):
@@ -63,7 +64,7 @@ class Spring:
             #print(f'precolision: x={precollisionx} y={precollisiony}')
             collisionx = predictedPos[0]>i[0][0] and predictedPos[0]<i[1][0]
             collisiony = predictedPos[1]<i[0][1] and predictedPos[1]>i[3][1]
-            if self.id == 3:
+            if self.id == debug_id:
                 print(f'colision: x={collisionx} y={collisiony}')
                 print(f'collisiony {predictedPos[1]}<{i[0][1]} {predictedPos[1]}>{i[3][1]}')
             if collisionx and collisiony:
@@ -92,17 +93,17 @@ class Spring:
                                 predictedPos[1] = self.position[1]
                                 break
                 elif precollisionx and not precollisiony:
-                    if self.id == 9:
+                    if self.id == debug_id:
                         print("collision top")
                     predictedPos[1] = self.position[1]
                     if left_height > right_height:
-                        if self.id == 9:
+                        if self.id == debug_id:
                             print("left higher")
                         predictedPos[0] = -0.01 + self.position[0]  # Move right
                         if len(self.neighbours)==2:
                             self.neighbours = [self.neighbours[0]]
                     else:
-                        if self.id == 9:
+                        if self.id == debug_id:
                             print("right higher")
                         predictedPos[0] = 0.01 + self.position[0]  # Move right
                         print(self.neighbours)

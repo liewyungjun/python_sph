@@ -5,6 +5,20 @@ import matplotlib.animation as animation
 from matplotlib.patches import Polygon
 import numpy as np
 import sys
+import os
+from datetime import datetime
+
+def readMap(mapname,loadpath):
+    with open(f'{loadpath}/{mapname}.txt', 'r') as f:
+        content = f.read()
+        # Convert string representation of list to actual list
+        points = eval(content)
+        #print(points)
+        # Since we have a single obstacle, we'll return it in the obstacleList format
+        obstacleList = points
+        #obstacleList = [[(x, y) for x, y in points]]
+        return obstacleList
+    
 
 if __name__ == '__main__':
     try:
@@ -14,15 +28,30 @@ if __name__ == '__main__':
     #numSprings = 6
     springs = []
     obstacles = [[(2,6),(4,6),(4,4),(2,4)],[(5,8),(6,8),(6,6),(5,6)]]
+
+    frame_length  = 2000
+
+    loadmap = True
+    mapname = 'maze_spring'
+    loadpath = "demo_maps"
+
+    save = True
+    results_path = "demo_results"
+    savename = "maze_spring.mp4"
+
+    if loadmap:
+        obstacles = readMap(mapname,loadpath)
+
     #obstacles = [[(4,8),(6,8),(6,5),(4,5)]]
     #obstacles = []
     plotsize = (10,10)
+    scaling_factor = 0.5
     for i in range(numSprings):
-        springs.append(Spring(i,np.array([i%5+3,i//10+2,0],dtype='float64'),plotSize=plotsize,obstacleList=obstacles))
+        springs.append(Spring(i,np.array([i%5+3,i//10,0],dtype='float64'),plotSize=plotsize,obstacleList=obstacles))
     springs[0].position = np.array([7,2,0])
     x_limits = (0, plotsize[0])
     y_limits = (0, plotsize[1])
-    figsize = ((x_limits[1]-x_limits[0]) / (2.54*0.5*0.8), (y_limits[1] - y_limits[0]) / (2.54*0.5*0.8))
+    figsize = ((x_limits[1]-x_limits[0]) / (2.54*scaling_factor*0.8), (y_limits[1] - y_limits[0]) / (2.54*scaling_factor*0.8))
     inches_per_unit = figsize[0] / (x_limits[1] - x_limits[0])  # how many inches per axis unit
     points_per_unit = inches_per_unit * 72  # convert to points
     markersize = 5 * points_per_unit  # 5 axes unit marker diameter
@@ -43,6 +72,7 @@ if __name__ == '__main__':
     globalcomms = [np.zeros(4) for i in range(numSprings)]
     connections_lines = []
     texts = []
+
     def update(frame):
         global globalcomms
         global connections_lines
@@ -52,10 +82,14 @@ if __name__ == '__main__':
         for i in range(numSprings):
             springs[i].sendComms(globalcomms)
         #print(globalcomms)
+        # Clear previous texts
+        global texts
+        for text in texts:
+            text.remove()
+        texts = []
+        
         for i in range(numSprings):
             springs[i].step(globalcomms)
-        texts = []
-        for i in range(numSprings):
             springaxs[i].set_data([springs[i].position[0]],[springs[i].position[1]])
             text = ax.text(springs[i].position[0], springs[i].position[1]+0.2, str(springs[i].id), ha='center', va='bottom')        
             texts.append(text)
@@ -83,24 +117,26 @@ if __name__ == '__main__':
         #     springs[2].neighbours = [1]
         #time.sleep(0.2)    
         return springaxs + texts + connections_lines
-    anim = animation.FuncAnimation(fig, update, frames=2000, interval=0.2, blit=True,repeat=False)
-
+    
+    anim = animation.FuncAnimation(fig, update, frames=frame_length, interval=0.02 * 1000, blit=True,repeat=False)
+    
+    if save:
+        # Create timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Create folder name with simulation name and timestamp
+        folder_name = f"{results_path}/{timestamp}_{savename.split('.')[0]}"
+        
+        # Create folders if they don't exist
+        os.makedirs(folder_name, exist_ok=True)
+        
+        # Update save path to include new folder
+        save_path = os.path.join(folder_name, savename)
+        
+        # Save animation to the new folder
+        writervideo = animation.FFMpegWriter(fps=60)
+        anim.save(save_path, writer=writervideo)
+    
     plt.xlabel("X")
     plt.ylabel("Y")
-
     plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
