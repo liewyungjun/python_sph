@@ -82,9 +82,9 @@ def on_close(event):
             f.write(str(polys[-1]) + ']\n')
 # Create figure and connect click event
 #plotsize setup
-ratio = (3,5)
-plotSize = 50.0
-axesScaling = 10 #size of axes scaling factor e.g. 10 units/axesScaling = plot cm size
+ratio = (1,1)
+plotSize = 10.0
+axesScaling = 0.5 #size of axes scaling factor e.g. 10 units/axesScaling = plot cm size
 
 #Simulation graphical size calculations
 x_limits = (0, ratio[0]*plotSize)
@@ -104,7 +104,7 @@ ax.set_position([0.1, 0.1, 0.8, 0.8])
 
 points = []
 polys = []
-mapname = "maze"
+mapname = "sparse_spring"
 drawmode = 'rect'
 savepath = "demo_maps"
 fig.canvas.mpl_connect('button_press_event', lambda event: onclick(event, drawmode))

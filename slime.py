@@ -1,10 +1,10 @@
 import math
 import numpy as np
-
-force_radius = 3.0
-movement_factor = 0.1
+target_dist = 1.0
+force_radius = target_dist + 0.2
+movement_factor = 0.04
 bond_factor = 0.1
-observation_id = 9
+observation_id = -4
 
 class Slime:
     #0:advancer 1:spreader 2:front-waiter 3:follower 4:wall-stuck
@@ -43,11 +43,14 @@ class Slime:
             dist = max(0.01,dist)
             deltaforce = np.array([deltax/dist,deltay/dist,deltaz/dist])
             maxdelta = np.maximum(np.abs(maxdelta),np.abs(deltaforce))
-            if dist > 2.0:
-                if self.neighbours[i][0] == 3:
-                    continue
-                totalforce -= deltaforce
-            if dist < 1.0:
+            if dist > target_dist + 0.1:
+                if self.neighbours[i][0] != self.STATE_FOLLOWER and self.neighbours[i][0] != self.STATE_WALL_STUCK:
+                    totalforce -= deltaforce
+                else:
+                    if self.state == self.STATE_WALL_STUCK:
+                        totalforce -= deltaforce
+
+            if dist < target_dist +- 0.1:
                 totalforce += deltaforce
         self.bondForce = totalforce
         return 
@@ -102,17 +105,21 @@ class Slime:
             self.movementForce = movementForce
             return                
         if not has_left_neighbour:
-            print(f'{self.id}: no left neighbour')
+            if self.id == observation_id:
+                print(f'{self.id}: no left neighbour')
             if self.nearEdge():
                     self.switchState(self.STATE_ADVANCER)
+                    movementForce[1] = 1.0
             else:
                 self.switchState(self.STATE_SPREADER)
                 movementForce = np.array([-1.0,0.0,0.0])
         else:
             if not has_right_neighbour:
-                print(f'{self.id}: no right neighbour')
+                if self.id == observation_id:
+                    print(f'{self.id}: no right neighbour')
                 if self.nearEdge():
                     self.switchState(self.STATE_ADVANCER)
+                    movementForce[1] = 1.0
                 else:
                     self.switchState(self.STATE_SPREADER)
                     movementForce = np.array([1.0,0.0,0.0])
@@ -132,11 +139,11 @@ class Slime:
                     print(f'{self.id}: leftest is {leftest_dist}, rightest is {rightest_dist}')
                     print(f'{self.id}: target is {target}, movementForce is {movementForce}')
         
-        if self.state == self.STATE_ADVANCER and has_wait_spreader_neighbour:
-            if self.id == observation_id:
-                print(f'has waiting neighbour')
-            self.switchState(self.STATE_FRONT_WAITER)
-            movementForce[1] = 0.0
+        # if self.state == self.STATE_ADVANCER and has_wait_spreader_neighbour:
+        #     if self.id == observation_id:
+        #         print(f'has waiting neighbour')
+        #     self.switchState(self.STATE_FRONT_WAITER)
+        #     movementForce[1] = 0.0
         self.movementForce = movementForce
         return
     
@@ -159,6 +166,50 @@ class Slime:
                 return True
         return False
         
+    def lineIntersects(self, x1, y1, x2, y2, x3, y3, x4, y4):
+            # Returns True if line segments (x1,y1)->(x2,y2) and (x3,y3)->(x4,y4) intersect
+            denominator = ((x2 - x1) * (y4 - y3)) - ((y2 - y1) * (x4 - x3))
+            if denominator == 0:
+                return False
+                
+            ua = (((x4 - x3) * (y1 - y3)) - ((y4 - y3) * (x1 - x3))) / denominator
+            ub = (((x2 - x1) * (y1 - y3)) - ((y2 - y1) * (x1 - x3))) / denominator
+            
+            return (ua >= 0 and ua <= 1) and (ub >= 0 and ub <= 1)
+        
+    def checkOcclusion(self, idx):
+        
+        # Get line between self and idx
+        x1, y1 = self.position[0], self.position[1]
+        x2, y2 = idx[2], idx[3]
+        
+        # Check intersection with each obstacle
+        for obstacle in self.obstacleList:
+            # Check each edge of the obstacle rectangle
+            # Top edge
+            if self.lineIntersects(x1, y1, x2, y2, 
+                                    obstacle[0][0], obstacle[0][1], 
+                                    obstacle[1][0], obstacle[1][1]):
+                return False
+            # Right edge
+            if self.lineIntersects(x1, y1, x2, y2,
+                                    obstacle[1][0], obstacle[1][1],
+                                    obstacle[2][0], obstacle[2][1]):
+                return False
+            # Bottom edge
+            if self.lineIntersects(x1, y1, x2, y2,
+                                    obstacle[2][0], obstacle[2][1],
+                                    obstacle[3][0], obstacle[3][1]):
+                return False
+            # Left edge
+            if self.lineIntersects(x1, y1, x2, y2,
+                                    obstacle[3][0], obstacle[3][1],
+                                    obstacle[0][0], obstacle[0][1]):
+                return False
+        return True
+    
+        
+        
 
     def scanSurroundings(self,globalComms):
         #globalComms is an array [id,state,posx,posy,poz]
@@ -170,7 +221,10 @@ class Slime:
             deltaz = self.position[2] - i[4]
             dist = math.sqrt(deltax*deltax + deltay*deltay + deltaz*deltaz)
             if dist < force_radius:
-                self.addNeighbour(i)
+                if self.checkOcclusion(i) or dist < 0.5:
+                    self.addNeighbour(i)
+                else:
+                    self.removeNeighbour(i)    
             if dist > force_radius:
                 self.removeNeighbour(i)
         return
@@ -216,7 +270,8 @@ class Slime:
         if self.state != self.STATE_FOLLOWER and self.state!=self.STATE_FOLLOWER: # not follower or stuck
             predictedPos = self.position + self.movementForce * movement_factor * self.deltaTime
             if not self.checkNeighbours(predictedPos): #will not have any neighbours
-                self.movementForce = -self.bondForce
+                #self.movementForce = -self.bondForce
+                print("will not have neighbour")
             else:
                 #need to maintain right neighbour if going left and vice versa
                 if self.state == self.STATE_SPREADER or self.state == self.STATE_ADVANCER:
