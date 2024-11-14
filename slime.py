@@ -1,10 +1,13 @@
 import math
 import numpy as np
-target_dist = 1.0
+target_dist = 2.0
 force_radius = target_dist + 0.2
-movement_factor = 0.04
+movement_factor = 0.14
 bond_factor = 0.1
 observation_id = -4
+side_movement = 1.0
+break_margin = 0.5
+forward_movement = 0.8
 
 class Slime:
     #0:advancer 1:spreader 2:front-waiter 3:follower 4:wall-stuck
@@ -109,23 +112,23 @@ class Slime:
                 print(f'{self.id}: no left neighbour')
             if self.nearEdge():
                     self.switchState(self.STATE_ADVANCER)
-                    movementForce[1] = 1.0
+                    movementForce[1] = forward_movement
             else:
                 self.switchState(self.STATE_SPREADER)
-                movementForce = np.array([-1.0,0.0,0.0])
+                movementForce = np.array([-side_movement,0.0,0.0])
         else:
             if not has_right_neighbour:
                 if self.id == observation_id:
                     print(f'{self.id}: no right neighbour')
                 if self.nearEdge():
                     self.switchState(self.STATE_ADVANCER)
-                    movementForce[1] = 1.0
+                    movementForce[1] = forward_movement
                 else:
                     self.switchState(self.STATE_SPREADER)
-                    movementForce = np.array([1.0,0.0,0.0])
+                    movementForce = np.array([side_movement,0.0,0.0])
             else: #has both neighbours
                 self.switchState(self.STATE_ADVANCER)
-                movementForce = np.array([0.0,1.0,0.0])
+                movementForce = np.array([0.0,forward_movement,0.0])
             
         # If we're in state 2 (advancer), adjust movement to balance distances
         if self.state == self.STATE_ADVANCER:
@@ -162,7 +165,7 @@ class Slime:
             deltay = predictedPos[1] - neighbour[2]
             deltaz = predictedPos[2] - neighbour[3]
             dist = math.sqrt(deltax*deltax + deltay*deltay + deltaz*deltaz)
-            if dist < force_radius - 1.5:
+            if dist < force_radius - break_margin:
                 return True
         return False
         
@@ -271,7 +274,8 @@ class Slime:
             predictedPos = self.position + self.movementForce * movement_factor * self.deltaTime
             if not self.checkNeighbours(predictedPos): #will not have any neighbours
                 #self.movementForce = -self.bondForce
-                print("will not have neighbour")
+                #print("will not have neighbour")
+                xx = 1
             else:
                 #need to maintain right neighbour if going left and vice versa
                 if self.state == self.STATE_SPREADER or self.state == self.STATE_ADVANCER:

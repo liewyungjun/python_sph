@@ -8,7 +8,7 @@ movement_factor = 0.05
 bond_factor = 0.4
 observation_id = -4
 
-
+#distance-based chain
 class Chain:
     def __init__(self,id,startPos,plotSize,obstacleList = []):
         self.neighbours = {} #dict of {id:[state,posx,posy,posz]}
@@ -146,8 +146,8 @@ class Chain:
         if self.id == observation_id:
             print(f'try to move to {self.position + self.velocity * self.deltaTime}')
         
-        #self.position = self.resolveCollisions(self.position + self.velocity * self.deltaTime + np.array([0.0,0.01,0.0])) #predict pos and resolve collision
-        self.position = self.resolveCollisions(self.position + self.velocity * self.deltaTime) #predict pos and resolve collision
+        self.position = self.resolveCollisions(self.position + self.velocity * self.deltaTime + np.array([0.0,0.01,0.0])) #predict pos and resolve collision
+        #self.position = self.resolveCollisions(self.position + self.velocity * self.deltaTime) #predict pos and resolve collision
         
         if self.id == observation_id:
             print(f'moved to {self.position}')

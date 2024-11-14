@@ -133,10 +133,6 @@ for i in range(numParticles):
     trajs.append(ax.plot([], [], 'c.', markersize=markersize, alpha = 0.1)[0])
     traj_hist.append([])
 floorLine = ax.axhline(y=SPHObject.plotFloor, color='red', linestyle='-')
-trail_artists = []
-
-
-
 
 def update(frame):
     # Update position and velocity for both balls

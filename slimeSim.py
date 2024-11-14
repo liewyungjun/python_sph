@@ -36,7 +36,7 @@ if __name__ == '__main__':
     savename = "slime.mp4"
     frame_length = 2000
 
-    loadmap = True
+    loadmap = False
     mapname = 'sparse_spring'
     loadpath = "demo_maps"
 
