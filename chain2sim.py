@@ -39,6 +39,16 @@ def generateParticleGrid(numParticles,plotSize,gridSpacing):#particle generation
             particleList.append((x,y))
     return particleList
 
+def readStartingPos(positionName,loadpath):
+    with open(f'{loadpath}/{positionName}.txt', 'r') as f:
+        content = f.read()
+        # Convert string representation of list to actual list
+        points = eval(content)
+        #print(points)
+        # Since we have a single obstacle, we'll return it in the obstacleList format
+        startingPos = points
+        #obstacleList = [[(x, y) for x, y in points]]
+        return startingPos
 
 if __name__ == '__main__':
     try:
@@ -53,30 +63,46 @@ if __name__ == '__main__':
     
     save = False
     results_path = "demo_results"
-    savename = "chain2.mp4"
-    frame_length = 2500
+    savename = "chain2_basic_connected.mp4"
+    frame_length = 2000
 
-    loadmap = False
-    mapname = 'sparse_spring'
+    loadmap = True
+    mapname = 'basic_1010'
     loadpath = "demo_maps"
+
+    loadStartPos = False
+    loadStartingPath = 'demo_starting_pos'
+    positionName = "edgepull"
 
     mass = 1
     spring_constant = 200
     gravity = 9.81
+    movement_factor = 5
+    target_dist = 1.2
 
     trails = False
     if loadmap:
         obstacles = readMap(mapname,loadpath)
 
+    if loadStartPos:
+        startingPoints = readStartingPos(positionName,loadStartingPath)
+        numModel = len(startingPoints)
+
     for i in range(numModel):
-            chain2.append(Chain2(i,[i%5+1,i//5,0],plotSize=plotsize,obstacleList=obstacles,mass=mass,spring_constant=spring_constant,gravity=gravity))
+            if loadStartPos:
+                chain2.append(Chain2(i,[startingPoints[i][0],startingPoints[i][1],0],plotSize=plotsize,
+                                     obstacleList=obstacles,mass=mass,spring_constant=spring_constant,
+                                     gravity=gravity,movement_factor=movement_factor,target_dist=target_dist))
+            else:
+                chain2.append(Chain2(i,[i%5+3,i//5,0],plotSize=plotsize,obstacleList=obstacles,mass=mass,
+                                     spring_constant=spring_constant,gravity=gravity,movement_factor=movement_factor,target_dist=target_dist))
             
     x_limits = (0, plotsize[0])
     y_limits = (0, plotsize[1])
     figsize = ((x_limits[1]-x_limits[0]) / (2.54*axesScaling*0.8), (y_limits[1] - y_limits[0]) / (2.54*axesScaling*0.8))
     inches_per_unit = figsize[0] / (x_limits[1] - x_limits[0])  # how many inches per axis unit
     points_per_unit = inches_per_unit * 72  # convert to points
-    markersize = 5 * points_per_unit  # 5 axes unit marker diameter
+    markersize = 0.1 * points_per_unit  # 5 axes unit marker diameter
 
     # Set up the figure and axis
     fig, ax = plt.subplots(figsize=(figsize),dpi=122)  # e.g. 30 units = 30cm/2 = 15cm size graph
