@@ -79,10 +79,10 @@ class Model:
             deltay = self.position[1] - neighbour[2]
             deltaz = self.position[2] - neighbour[3]
             dist = math.sqrt(deltax*deltax + deltay*deltay + deltaz*deltaz)
-            if dist < self.force_radius - 1.5:
-                if deltax < 0.0:
-                    has_left_neighbour = True
+            if dist < self.force_radius:
                 if deltax > 0.0:
+                    has_left_neighbour = True
+                if deltax < 0.0:
                     has_right_neighbour = True
         return has_left_neighbour,has_right_neighbour
     
