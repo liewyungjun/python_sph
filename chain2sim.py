@@ -54,18 +54,22 @@ if __name__ == '__main__':
     save = False
     results_path = "demo_results"
     savename = "chain2.mp4"
-    frame_length = 2000
+    frame_length = 2500
 
     loadmap = False
     mapname = 'sparse_spring'
     loadpath = "demo_maps"
+
+    mass = 1
+    spring_constant = 200
+    gravity = 9.81
 
     trails = False
     if loadmap:
         obstacles = readMap(mapname,loadpath)
 
     for i in range(numModel):
-            chain2.append(Chain2(i,[i%5+1,i//5,0],plotSize=plotsize,obstacleList=obstacles))
+            chain2.append(Chain2(i,[i%5+1,i//5,0],plotSize=plotsize,obstacleList=obstacles,mass=mass,spring_constant=spring_constant,gravity=gravity))
             
     x_limits = (0, plotsize[0])
     y_limits = (0, plotsize[1])
@@ -162,8 +166,13 @@ if __name__ == '__main__':
             with open(params_file, "w") as f:
                 f.write(f"Simulation Parameters:\n")
                 f.write(f"------------------------------------\n")
-                f.write(f"Simulation graphical setup\n")
                 f.write(f"Simulation Steps: {frame_length}\n")
+                f.write(f"Spring Constant: {spring_constant}\n")
+                f.write(f"Gravity: {gravity}\n")
+                f.write(f"Force Radius: {chain2[0].force_radius}\n")
+                f.write(f"Target Distance: {chain2[0].target_dist}\n")
+                
+
     plt.xlabel("X")
     plt.ylabel("Y")
 

@@ -7,12 +7,12 @@ import time
 #FBD-based chain
 class Chain2(Model):
     def __init__(self,id,startPos,plotSize,obstacleList = [],target_dist = 1.2,movement_factor = 0.05,bond_factor = 0.4,
-                 observation_id = 0):
+                 observation_id = -1,mass = 1,spring_constant=200,gravity=9.81):
         super().__init__(id,startPos,plotSize,obstacleList,target_dist,movement_factor,bond_factor,
                  observation_id)
-        self.mass = 1
-        self.spring_constant = 20.0
-        self.gravity = 9.81
+        self.mass = mass
+        self.spring_constant = spring_constant
+        self.gravity = gravity
         self.force_radius = 1.2* self.target_dist
     
     def calculate_FBD(self,forceArr):
