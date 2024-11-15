@@ -9,7 +9,7 @@ https://github.com/user-attachments/assets/17837508-8c26-4b13-a4c6-9156e888635b
 
 https://github.com/user-attachments/assets/8e47c300-7975-4434-a9a6-1e7bcdc52fe3
 
-
+https://github.com/user-attachments/assets/bec1c98b-8b42-4ef3-bed0-7f1af1b7240e
 
 ## Tools
 mapmaker.py creates and saves maps in matplotlib using mouse clicks
@@ -24,3 +24,7 @@ collisionTestSim.py illustrates collision vector
 
 
 This implementation is inspired by https://github.com/SebLague/Fluid-Sim
+
+
+
+
