@@ -1,0 +1,7 @@
+Simulation Parameters:
+------------------------------------
+Simulation Steps: 2500
+Spring Constant: 200
+Gravity: 9.81
+Force Radius: 1.4
+Target Distance: 1.2
