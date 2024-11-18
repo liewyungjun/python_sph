@@ -17,6 +17,7 @@ class Chain2(Model):
         self.terminal_velocity = 5.0
         movement_factor = ((self.force_radius-target_dist) * self.spring_constant)*0.9
         #movement_factor = ((self.force_radius) * self.spring_constant)*0.2
+        #movement_factor = 0
         super().__init__(id,startPos,plotSize,obstacleList,target_dist,movement_factor,bond_factor,
                  observation_id)
     
@@ -63,13 +64,13 @@ class Chain2(Model):
                     print("state is 0")
             else:
                 if not left_right_neighbours[0] and left_right_neighbours[1]: #only right neighbour
-                    total_force[0] -= self.movement_factor
+                    total_force[0] -= self.movement_factor * len(self.neighbours)
                     total_force -= gravity_force
                     if self.id == self.observation_id:
                         print("no left")
                         print(f'total force {total_force} after {-self.movement_factor}')
                 elif not left_right_neighbours[1] and left_right_neighbours[0]: #only left neighbour
-                    total_force[0] += self.movement_factor
+                    total_force[0] += self.movement_factor * len(self.neighbours)
                     total_force -= gravity_force
                     if self.id == self.observation_id:
                         print("no right")
