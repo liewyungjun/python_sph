@@ -59,7 +59,7 @@ if __name__ == '__main__':
     obstacles = [[(2,6),(6,6),(6,4),(2,4)]]
     #obstacles = []
     plotsize = (10,10)
-    axesScaling = 0.5 #size of plot
+    axesScaling = 0.75 #size of plot
     
     save = False
     results_path = "demo_results"
@@ -106,6 +106,9 @@ if __name__ == '__main__':
 
     # Set up the figure and axis
     fig, ax = plt.subplots(figsize=(figsize),dpi=122)  # e.g. 30 units = 30cm/2 = 15cm size graph
+    ax.grid(True)
+    ax.set_xticks(range(int(x_limits[0]), int(x_limits[1])+1))
+    ax.set_yticks(range(int(y_limits[0]), int(y_limits[1])+1))    
     ax.set_xlim(x_limits)
     ax.set_ylim(y_limits)
     plt.title(f"Simulation\nParticles: {numModel}")
