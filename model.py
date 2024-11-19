@@ -6,7 +6,7 @@ import numpy as np
 #FBD-based chain
 class Model:
     def __init__(self,id,startPos,plotSize,obstacleList = [],target_dist = 1.2,movement_factor = 0.05,bond_factor = 0.4,
-                 observation_id = -4):
+                 observation_id = -4,force_radius = 1.4,deltaTime = 0.02):
         self.neighbours = {} #dict of {id:[state,posx,posy,posz]}
         self.velocity = np.array([0.0,0.0,0.0])
         self.position = np.array(startPos)
@@ -18,10 +18,10 @@ class Model:
         self.movementForce = np.array([0.0,0.0,0.0])
         self.gravityOn = False
         self.collisionDamping = 0.8
-        self.deltaTime = 0.02
+        self.deltaTime = deltaTime
         self.state = 0
         self.target_dist = target_dist
-        self.force_radius = self.target_dist + 0.2
+        self.force_radius = force_radius
         self.movement_factor = movement_factor
         self.bond_factor = bond_factor
         self.observation_id = observation_id
@@ -161,6 +161,22 @@ class Model:
                 self.removeNeighbour(i)
         return
     
+    def scanSurroundingsDynamic(self,globalComms,radius_percentage):
+        #alternative, scan surroundings will change the radius to introduce manufacturing defects
+        #globalComms is an array [id,state,posx,posy,poz]
+        for i in globalComms:
+            if i[0] == self.id:
+                continue
+            deltax = self.position[0] - i[2]
+            deltay = self.position[1] - i[3]
+            deltaz = self.position[2] - i[4]
+            dist = math.sqrt(deltax*deltax + deltay*deltay + deltaz*deltaz)
+            if dist < self.force_radius * radius_percentage:
+                self.addNeighbour(i)
+            if dist > self.force_radius * radius_percentage:
+                self.removeNeighbour(i)
+        return
+    
     def resolveCollisions(self,predictedPos):
         # Check for collision with side walls
         if predictedPos[0] > self.plotSize[0] or predictedPos[0]<0.0:
@@ -194,6 +210,40 @@ class Model:
                     else:
                         predictedPos[1] = self.position[1]
                         self.velocity[1] = 0.0
+        return np.array([predictedPos[0],predictedPos[1],0])
+    
+    def resolveCollisions2(self,predictedPos): #different implementation of resolveCollisions
+        #forces are not decomposed but projected with same magnitude in free direction
+        # Check for collision with side walls
+        if predictedPos[0] > self.plotSize[0] or predictedPos[0]<0.0:
+            self.velocity[0] = 0.0
+
+        # Check for collision with ground and top
+        if (predictedPos[1]) < 0.0 or predictedPos[1] > self.plotSize[1]:
+            self.velocity[1] = 0.0
+
+        for i in self.obstacleList:
+            precollisionx = self.position[0]>i[0][0] and self.position[0]<i[1][0]
+            precollisiony = self.position[1]<i[0][1] and self.position[1]>i[3][1]
+            collisionx = predictedPos[0]>i[0][0] and predictedPos[0]<i[1][0]
+            collisiony = predictedPos[1]<i[0][1] and predictedPos[1]>i[3][1]
+            if collisionx and collisiony:
+                #inside rectangle
+                if not precollisionx and precollisiony:
+                #collide side of obstacle
+                    if self.gravityOn:
+                        self.velocity = (-self.velocity[0]* self.collisionDamping,self.velocity[1]) 
+                    else:
+                        self.velocity[1] = np.linalg.norm(self.velocity)
+                        self.velocity[0] = 0.0
+                if precollisionx and not precollisiony:
+                #collide top/bottom of obstacle
+                    if self.gravityOn:
+                        self.velocity = (self.velocity[0],-self.velocity[1] * self.collisionDamping)        
+                    else:
+                        self.velocity[0] = np.linalg.norm(self.velocity) * np.sign(self.velocity[0])
+                        self.velocity[1] = 0.0
+        predictedPos = self.position + self.velocity * self.deltaTime
         return np.array([predictedPos[0],predictedPos[1],0])
         
     def calculateEdgeNormals(self):
