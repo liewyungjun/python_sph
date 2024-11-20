@@ -62,7 +62,7 @@ if __name__ == '__main__':
     axesScaling = 0.75 #size of plot
     
     save = False
-    results_path = "demo_results"
+    results_path = "results"
     savename = "chain2_basic_connected.mp4"
     frame_length = 2000
 
@@ -77,7 +77,6 @@ if __name__ == '__main__':
     mass = 1
     spring_constant = 200
     gravity = 9.81
-    movement_factor = 5
     target_dist = 1.2
 
     trails = False
@@ -92,10 +91,10 @@ if __name__ == '__main__':
             if loadStartPos:
                 chain2.append(Chain2(i,[startingPoints[i][0],startingPoints[i][1],0],plotSize=plotsize,
                                      obstacleList=obstacles,mass=mass,spring_constant=spring_constant,
-                                     gravity=gravity,movement_factor=movement_factor,target_dist=target_dist))
+                                     gravity=gravity,target_dist=target_dist))
             else:
-                chain2.append(Chain2(i,[i%5+3,i//5,0],plotSize=plotsize,obstacleList=obstacles,mass=mass,
-                                     spring_constant=spring_constant,gravity=gravity,movement_factor=movement_factor,target_dist=target_dist))
+                chain2.append(Chain2(i,[i%5+3,i//5/2,0],plotSize=plotsize,obstacleList=obstacles,mass=mass,
+                                     spring_constant=spring_constant,gravity=gravity,target_dist=target_dist))
             
     x_limits = (0, plotsize[0])
     y_limits = (0, plotsize[1])

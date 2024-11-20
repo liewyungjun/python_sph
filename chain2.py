@@ -7,13 +7,13 @@ np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 #FBD-based chain
 class Chain2(Model):
     def __init__(self,id,startPos,plotSize,obstacleList = [],target_dist = 1.2,movement_factor = 0.05,bond_factor = 0.4,
-                 observation_id = 4,mass = 1,spring_constant=200,gravity=9.81):
+                 observation_id = -4,mass = 1,spring_constant=200,gravity=9.81):
         self.mass = mass
         self.spring_constant = spring_constant
         self.gravity = gravity
         force_radius = 1.2* target_dist
         self.terminal_velocity = 5.0
-        movement_factor = ((force_radius-target_dist) * self.spring_constant)*0.9
+        movement_factor = ((force_radius-target_dist) * self.spring_constant)*0.95
         #movement_factor = ((self.force_radius) * self.spring_constant)*0.2
         #movement_factor = 0
         self.min_movement_fraction = 0.5
@@ -36,8 +36,16 @@ class Chain2(Model):
     def move(self,spring_force):
         damping_coefficient = 2*math.sqrt(self.mass * self.spring_constant) #critical damping
         gravity_force = np.array([0.0, self.gravity*self.mass, 0.0])
-
+        ##Attempt at only dampening velocity along the normalised vector of spring force
+        # norm = np.linalg.norm(spring_force)
+        # if norm >0:
+        #     unit_spring_vector = spring_force / norm
+        #     damping_force = np.dot(self.velocity,unit_spring_vector) * unit_spring_vector * damping_coefficient
+        # else:
+        #     damping_force = np.zeros(3)
+        # damping_force = np.zeros(3)
         total_force = spring_force + gravity_force - damping_coefficient * self.velocity
+        #total_force = spring_force + gravity_force - damping_force
         if self.id == self.observation_id:
             print(f'total force {total_force} = spring force {spring_force} + grav - damp_coeff {damping_coefficient} * vel {self.velocity}')
         left_right_neighbours = self.hasLeftRightNeighbours()
@@ -98,6 +106,21 @@ class Chain2(Model):
                 if self.id == self.observation_id:
                     print(f'spring force between {self.id} and {i} is {force}')
                     print(f' = unit_dir {unit_direction} * (dist {distance} - target_dist {self.target_dist}) * spring_const {self.spring_constant}')
+            
+    def updateForcesSquare(self,forceArr): #attempt at making a square formation
+        for i in self.neighbours.keys():
+            neighbourpos = np.array(self.neighbours[i][1:])
+            direction = neighbourpos - self.position
+            distance = np.linalg.norm(direction)
+            real_target_dist = self.target_dist if i%2!=self.id%2 else self.target_dist * math.sqrt(2)
+            if distance > 0:
+                unit_direction = direction / distance
+                force = unit_direction * (distance - real_target_dist) * self.spring_constant
+                forceArr[self.id][i] = force
+                forceArr[i][self.id] = -force
+                if self.id == self.observation_id:
+                    print(f'spring force between {self.id} and {i} is {force}')
+                    print(f' = unit_dir {unit_direction} * (dist {distance} - target_dist {self.target_dist}) * spring_const {self.spring_constant}')
     
     def updateForcesString(self,forceArr):
         for i in self.neighbours.keys():
@@ -119,28 +142,31 @@ class Chain2(Model):
                     forceArr[i][self.id] = -force
 
     def step(self,forceArr,globalComms):
-        
-        if self.id == self.observation_id:
-            print(f'Before Update')
-            print(f'forceArr[{self.observation_id}][1] is {forceArr[self.id][1]}')
-            print(f'forceArr[1][{self.observation_id}] is {forceArr[1][self.id]}')
+        ###Select scanning method##########################################
         #self.scanSurroundingsOccluded(globalComms)
         self.scanSurroundings(globalComms)
         #self.scanSurroundingsDynamic(globalComms,1.0-(self.id)/600)
+        ###################################################################
+
+        ###Calculate spring forces
         spring_force = self.calculate_FBD(forceArr)
+        ###################################################################
+
         if self.id == self.observation_id:
             print(f'{self.id} Spring Force: {spring_force}')
             print(f'{self.id} is at : {self.position}')
+
+        ###Move
         self.move(spring_force)
+        ###################################################################
+
         if self.id == self.observation_id:
             print(f'{self.id} move to  : {self.position}')
+
+        ###Update forces based on new position  
         self.updateForces(forceArr)
+        #self.updateForcesSquare(forceArr)
         #self.updateForcesString(forceArr)
-        if self.id == self.observation_id:
-            print(f'After Update')
-            print(f'forceArr[{self.observation_id}][1] is {forceArr[self.id][1]}')
-            print(f'forceArr[1][{self.observation_id}] is {forceArr[1][self.id]}')
-        # if self.id == self.observation_id:
-        #     time.sleep(0.5)
+        ###################################################################
         return        
    
