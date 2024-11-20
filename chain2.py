@@ -6,7 +6,7 @@ import time
 np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 #FBD-based chain
 class Chain2(Model):
-    def __init__(self,id,startPos,plotSize,obstacleList = [],target_dist = 1.2,movement_factor = 0.05,bond_factor = 0.4,
+    def __init__(self,id,startPos,plotSize,obstacleList = [],target_dist = 1.2,bond_factor = 0.4,
                  observation_id = -4,mass = 1,spring_constant=200,gravity=9.81):
         self.mass = mass
         self.spring_constant = spring_constant
@@ -16,6 +16,7 @@ class Chain2(Model):
         movement_factor = ((force_radius-target_dist) * self.spring_constant)*0.95
         #movement_factor = ((self.force_radius) * self.spring_constant)*0.2
         #movement_factor = 0
+        #self.gravity = 0.0
         self.min_movement_fraction = 0.5
         super().__init__(id,startPos,plotSize,obstacleList,target_dist,movement_factor,bond_factor,
                  observation_id,force_radius=force_radius)
@@ -115,7 +116,10 @@ class Chain2(Model):
             real_target_dist = self.target_dist if i%2!=self.id%2 else self.target_dist * math.sqrt(2)
             if distance > 0:
                 unit_direction = direction / distance
-                force = unit_direction * (distance - real_target_dist) * self.spring_constant
+                if distance < real_target_dist:
+                    force = unit_direction * (distance - real_target_dist) * self.spring_constant * 3
+                else:
+                    force = unit_direction * (distance - real_target_dist) * self.spring_constant
                 forceArr[self.id][i] = force
                 forceArr[i][self.id] = -force
                 if self.id == self.observation_id:
