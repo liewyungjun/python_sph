@@ -212,39 +212,7 @@ class Model:
                         self.velocity[1] = 0.0
         return np.array([predictedPos[0],predictedPos[1],0])
     
-    def resolveCollisions2(self,predictedPos): #different implementation of resolveCollisions
-        #forces are not decomposed but projected with same magnitude in free direction
-        # Check for collision with side walls
-        if predictedPos[0] > self.plotSize[0] or predictedPos[0]<0.0:
-            self.velocity[0] = 0.0
-
-        # Check for collision with ground and top
-        if (predictedPos[1]) < 0.0 or predictedPos[1] > self.plotSize[1]:
-            self.velocity[1] = 0.0
-
-        for i in self.obstacleList:
-            precollisionx = self.position[0]>i[0][0] and self.position[0]<i[1][0]
-            precollisiony = self.position[1]<i[0][1] and self.position[1]>i[3][1]
-            collisionx = predictedPos[0]>i[0][0] and predictedPos[0]<i[1][0]
-            collisiony = predictedPos[1]<i[0][1] and predictedPos[1]>i[3][1]
-            if collisionx and collisiony:
-                #inside rectangle
-                if not precollisionx and precollisiony:
-                #collide side of obstacle
-                    if self.gravityOn:
-                        self.velocity = (-self.velocity[0]* self.collisionDamping,self.velocity[1]) 
-                    else:
-                        self.velocity[1] = np.linalg.norm(self.velocity)
-                        self.velocity[0] = 0.0
-                if precollisionx and not precollisiony:
-                #collide top/bottom of obstacle
-                    if self.gravityOn:
-                        self.velocity = (self.velocity[0],-self.velocity[1] * self.collisionDamping)        
-                    else:
-                        self.velocity[0] = np.linalg.norm(self.velocity) * np.sign(self.velocity[0])
-                        self.velocity[1] = 0.0
-        predictedPos = self.position + self.velocity * self.deltaTime
-        return np.array([predictedPos[0],predictedPos[1],0])
+    
         
     def calculateEdgeNormals(self):
         res = []
