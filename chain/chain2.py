@@ -1,3 +1,8 @@
+import sys
+import os
+sys.path.append(os.path.abspath('../sph/'))
+print(sys.path)
+
 import math
 import numpy as np
 from model import Model
@@ -20,7 +25,7 @@ class Chain2(Model):
         #self.gravity = 0.0
         self.min_movement_fraction = 0.5
         super().__init__(id,startPos,plotSize,obstacleList,target_dist,movement_factor,bond_factor,
-                 observation_id,force_radius=force_radius)
+                 observation_id,force_radius=force_radius,deltaTime=0.02)
     
     def calculate_FBD(self,forceArr):
         #force = np.array([0.0, self.gravity*self.mass, 0.0])  # gravity in y direction
