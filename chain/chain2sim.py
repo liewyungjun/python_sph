@@ -65,7 +65,7 @@ if __name__ == '__main__':
     save = False
     results_path = "results"
     savename = "opt_test.mp4"
-    frame_length = 2000
+    frame_length = 3000
 
     loadmap = True
     mapname = 'basic_1010'
@@ -135,7 +135,7 @@ if __name__ == '__main__':
     state_colors = ['green', 'blue', 'brown','red','purple']
 
     def update(frame):
-        #start_time = time.time()
+        start_time = time.time()
 
         global connections_lines
         for lines in connections_lines:
@@ -145,10 +145,10 @@ if __name__ == '__main__':
             globalcomms[i] = chain2[i].sendComms()
         # for i in range(numModel):
         #     chain2[i].scanSurroundings(globalcomms)
-        #comms_time = time.time()
+        comms_time = time.time()
         for i in range(numModel):
             chain2[i].step(forceArr,globalcomms)
-        #steps_time = time.time()
+        steps_time = time.time()
         #particle label
         global texts
         for text in texts:
@@ -163,12 +163,12 @@ if __name__ == '__main__':
             modelaxs[i].set_data([positions_x[i]], [positions_y[i]])
             modelaxs[i].set_color(state_colors[chain2[i].state])
         
-        #posState_time = time.time()
+        posState_time = time.time()
         
         # Create all text labels at once
         texts = [ax.text(x, y+0.2, str(chain2[i].id), ha='center', va='bottom') 
                 for i, (x, y) in enumerate(zip(positions_x, positions_y))]
-        #text_time = time.time()
+        text_time = time.time()
         if trails:
             for i in range(numModel):
                 
@@ -183,8 +183,8 @@ if __name__ == '__main__':
         connections_lines = [LineCollection(segments, colors='g', alpha=0.3)]
         ax.add_collection(connections_lines[0])        
 
-        # lines_time = time.time()
-        # end_time = time.time()
+        lines_time = time.time()
+        end_time = time.time()
         # print(f'Time taken: {end_time - start_time} seconds')
         # print(f'Comms time: {comms_time - start_time} seconds')
         # print(f'Steps time: {steps_time - comms_time} seconds')

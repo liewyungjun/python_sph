@@ -15,10 +15,11 @@ class Chain2(Model):
                  observation_id = -5,mass = 1,spring_constant=200,gravity=9.81):
         self.mass = mass
         self.spring_constant = spring_constant
-        self.gravity = gravity
+        self.gravity = gravity * 1.5
         force_radius = 1.2* target_dist
         self.terminal_velocity = 5.0
         self.green_neighbours = []
+        self.had_green_left = False
         movement_factor = ((force_radius-target_dist) * self.spring_constant)*0.95
         #movement_factor = ((self.force_radius) * self.spring_constant)*0.2
         #movement_factor = 0
@@ -87,7 +88,7 @@ class Chain2(Model):
                 #                         min(self.position[0] - 0.0,self.plotSize[0] - self.position[0])/(self.plotSize[0]/2) + self.movement_factor * self.min_movement_fraction
                 scaled_movement_factor = self.movement_factor
                 if not left_right_neighbours[0] and left_right_neighbours[1]: #only right neighbour
-                    had_green_left = False
+                    self.had_green_left = False
                     if self.id == self.observation_id:
                         print(f'checking for green left neighbour {self.green_neighbours}')
                     for i in self.green_neighbours:
@@ -96,11 +97,12 @@ class Chain2(Model):
                                 print(f'there is a green left neighbour')
                             lastknownvector = np.array(i[1:])
                             lastknownvector = lastknownvector/np.linalg.norm(lastknownvector)
-                            had_green_left = True
+                            self.had_green_left = True
                             break
-                    if had_green_left:
+                    if self.had_green_left:
                         self.state = 2
-                        total_force -= scaled_movement_factor * len(self.neighbours) * 1.5 * lastknownvector
+                        total_force -= scaled_movement_factor * len(self.neighbours) * 3.5 * lastknownvector + gravity_force
+                        print("red left")
                     else:
                         self.state = 1
                         total_force[0] -= scaled_movement_factor * len(self.neighbours)
@@ -110,15 +112,16 @@ class Chain2(Model):
                         print("no left")
                         print(f'total force {total_force} after {-scaled_movement_factor} * {-self.movement_factor}')
                 elif not left_right_neighbours[1] and left_right_neighbours[0]: #only left neighbour
-                    had_green_right = False
+                    self.had_green_right = False
                     for i in self.green_neighbours:
                         if i[1] > self.position[0] and i[2]>self.position[1]:
                             lastknownvector = np.array(i[1:])
-                            had_green_right = True
+                            self.had_green_right = True
                             break
-                    if had_green_right:
+                    if self.had_green_right:
                         self.state = 2
-                        total_force += scaled_movement_factor * len(self.neighbours) * 1.5 * lastknownvector
+                        total_force += scaled_movement_factor * len(self.neighbours) * 1.5 * lastknownvector  + gravity_force
+                        print("red brown")
                     else:
                         self.state = 1
                         total_force[0] += scaled_movement_factor * len(self.neighbours)
@@ -127,7 +130,11 @@ class Chain2(Model):
                         if self.id == self.observation_id:
                             print("no right")
                             print(f'total force {total_force} after {scaled_movement_factor} scaled from {self.movement_factor}')
-            
+                if self.state == 2:
+                    if self.had_green_left:
+                        total_force -= scaled_movement_factor * len(self.neighbours) * 3.5 * lastknownvector + gravity_force
+                    elif self.had_green_right:
+                        total_force += scaled_movement_factor * len(self.neighbours) * 1.5 * lastknownvector + gravity_force
                 #else: continue falling if no left and right  neighbours
 
         # try to use spring force to go around obstacle with magnitude projection    
@@ -237,8 +244,8 @@ class Chain2(Model):
 
     def step(self,forceArr,globalComms):
         ###Select scanning method##########################################
-        #self.scanSurroundingsOccluded(globalComms)
-        self.scanSurroundings(globalComms)
+        self.scanSurroundingsOccluded(globalComms)
+        #self.scanSurroundings(globalComms)
         #self.scanSurroundingsDynamic(globalComms,1.0-(self.id)/600)
         ###################################################################
 
