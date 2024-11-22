@@ -20,10 +20,11 @@ class Chain2(Model):
         self.terminal_velocity = 5.0
         self.green_neighbours = []
         self.had_green_left = False
-        movement_factor = ((force_radius-target_dist) * self.spring_constant)*0.95
+        movement_factor = ((force_radius-target_dist) * self.spring_constant)*0.9
         #movement_factor = ((self.force_radius) * self.spring_constant)*0.2
         #movement_factor = 0
         #self.gravity = 0.0
+        self.lastknownvector = np.zeros(0)
         self.min_movement_fraction = 0.5
         super().__init__(id,startPos,plotSize,obstacleList,target_dist,movement_factor,bond_factor,
                  observation_id,force_radius=force_radius,deltaTime=0.02)
@@ -60,50 +61,74 @@ class Chain2(Model):
         gravity_force = np.array([0.0, self.gravity*self.mass, 0.0])
         total_force = spring_force + gravity_force - damping_coefficient * self.velocity
         left_right_neighbours = self.hasLeftRightNeighbours()
+        scaled_movement_factor = self.movement_factor
 
+        #state machine here
         #if have both neighbors
         if left_right_neighbours[0] and left_right_neighbours[1]: 
             self.state = 0
         else:
-            if not((len(self.neighbours) == 1 and list(self.neighbours.values())[0][0] == 1) or len(self.neighbours) == 0 or self.state == 2) : #exclude special case of only one or no neighbours
-                scaled_movement_factor = self.movement_factor
+            #exclude special case of only one blue neighbour, or no neighbours, or brown state
+            if not((len(self.neighbours) == 1 and list(self.neighbours.values())[0][0] == 1) \
+                or len(self.neighbours) == 0 or self.state == 2): 
+                
                 if not left_right_neighbours[0] and left_right_neighbours[1]: #only right neighbour
-                    self.had_green_left = False
+                    self.had_green_left = False #if had left neighbour in front when green
                     for i in self.green_neighbours:
                         if i[1] < self.position[0] and i[2]>self.position[1]:
-                            lastknownvector = np.array(i[1:])
-                            lastknownvector = lastknownvector/np.linalg.norm(lastknownvector)
+                            lastknownvector = np.array(i[1:])-self.position
+                            self.lastknownvector = lastknownvector/np.linalg.norm(lastknownvector)
                             self.had_green_left = True
+                            #print(f'{self.id}: updating lastknown vector {self.lastknownvector}')
                             break
                     if self.had_green_left:
                         self.state = 2
-                        total_force -= scaled_movement_factor * len(self.neighbours) * 3.5 * lastknownvector + gravity_force
-                        print("red left")
+                        #total_force -= scaled_movement_factor * len(self.neighbours) * 3.5 * self.lastknownvector 
                     else:
                         self.state = 1
                         total_force[0] -= scaled_movement_factor * len(self.neighbours)
-                        if not self.nearEdge():
+                        if not self.nearEdge(): #if not near edge, dont apply gravity
                             total_force -= gravity_force
+
                 elif not left_right_neighbours[1] and left_right_neighbours[0]: #only left neighbour
                     self.had_green_right = False
                     for i in self.green_neighbours:
                         if i[1] > self.position[0] and i[2]>self.position[1]:
-                            lastknownvector = np.array(i[1:])
+                            lastknownvector = np.array(i[1:])-self.position 
+                            self.lastknownvector = lastknownvector/np.linalg.norm(lastknownvector)
                             self.had_green_right = True
+                            #print(f'{self.id}: updating lastknown vector {self.lastknownvector}')
                             break
                     if self.had_green_right:
                         self.state = 2
-                        total_force += scaled_movement_factor * len(self.neighbours) * 1.5 * lastknownvector  + gravity_force
+                        #total_force += scaled_movement_factor * len(self.neighbours) * 1.5 * self.lastknownvector
                     else:
                         self.state = 1
                         total_force[0] += scaled_movement_factor * len(self.neighbours)
                         if not self.nearEdge():
                             total_force -= gravity_force
+                #else: do nothing
+            else:
+                #if brown, move towards last known neighbour vector
                 if self.state == 2:
+                    left_factor = 0.7
+                    right_factor = 0.4
                     if self.had_green_left:
-                        total_force -= scaled_movement_factor * len(self.neighbours) * 3.5 * lastknownvector + gravity_force
+                        total_force += scaled_movement_factor * max(1,len(self.neighbours)) * left_factor * self.lastknownvector
+                        # print(f'{self.id}: going left {scaled_movement_factor * min(1,len(self.neighbours)) * left_factor * self.lastknownvector}')
+                        # print(f'{self.id}: going left {scaled_movement_factor} * {min(1,len(self.neighbours))} * left_factor * {self.lastknownvector}')
                     elif self.had_green_right:
-                        total_force += scaled_movement_factor * len(self.neighbours) * 1.5 * lastknownvector + gravity_force
+                        total_force += scaled_movement_factor * max(1,len(self.neighbours)) * right_factor * self.lastknownvector
+                        # print(f'{self.id}: going right {scaled_movement_factor * min(1,len(self.neighbours)) * right_factor * self.lastknownvector}')
+                # elif self.state == 1 and list(self.neighbours.values())[0][0] != 1: #the case for no neighbour as a blue
+                #     elif not left_right_neighbours[1] and left_right_neighbours[0]: #only left neighbour
+                #     total_force[0] += scaled_movement_factor * len(self.neighbours)
+
+                else:
+                    self.state = 0
+
+
+
                 #else: continue falling if no left and right  neighbours
         self.acceleration = total_force/self.mass
         self.velocity = np.minimum(self.velocity + self.acceleration * self.deltaTime, np.full(3,self.terminal_velocity))
@@ -111,6 +136,8 @@ class Chain2(Model):
         
         predictedPos =  self.position + self.velocity * self.deltaTime
         self.position = self.resolveCollisions(predictedPos)
+        
+        #end of move if green, record down neighbour positions
         if self.state == 0:
             self.green_neighbours = []
             neighbour_values = list(self.neighbours.values())
@@ -161,8 +188,8 @@ class Chain2(Model):
 
     def step(self,forceArr,globalComms):
         ###Select scanning method##########################################
-        self.scanSurroundingsOccluded(globalComms)
-        #self.scanSurroundings(globalComms)
+        #self.scanSurroundingsOccluded(globalComms)
+        self.scanSurroundings(globalComms)
         #self.scanSurroundingsDynamic(globalComms,1.0-(self.id)/600)
         ###################################################################
 
