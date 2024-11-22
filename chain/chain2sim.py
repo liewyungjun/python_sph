@@ -94,7 +94,7 @@ if __name__ == '__main__':
                                      obstacleList=obstacles,mass=mass,spring_constant=spring_constant,
                                      gravity=gravity,target_dist=target_dist))
             else:
-                chain2.append(Chain2(i,[i%5+3,i//5/2,0],plotSize=plotsize,obstacleList=obstacles,mass=mass,
+                chain2.append(Chain2(i,[i%5*target_dist*0.75+plotsize[0]/2,i//5*target_dist*0.75,0],plotSize=plotsize,obstacleList=obstacles,mass=mass,
                                      spring_constant=spring_constant,gravity=gravity,target_dist=target_dist))
             
     x_limits = (0, plotsize[0])
