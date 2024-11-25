@@ -63,8 +63,10 @@ def read_map_and_get_clicks():
             with open(f'{savepath}/{saveName}.txt', 'a') as f:
                 f.write('[')
                 for i in range(len(click_points)-1):
-                    f.write(str(click_points[i]) + ',\n')
-                f.write(str(click_points[-1]) + ']\n')
+                    rounded_point = (round(click_points[i][0], 2), round(click_points[i][1], 2))
+                    f.write(str(rounded_point) + ',\n')
+                rounded_last_point = (round(click_points[-1][0], 2), round(click_points[-1][1], 2))
+                f.write(str(rounded_last_point) + ']\n')
     
     def onkey(event):
         global points

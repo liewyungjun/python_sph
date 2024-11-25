@@ -8,64 +8,24 @@ import numpy as np
 import sys
 import os
 from datetime import datetime
-
-def readMap(mapname,loadpath):
-    with open(f'{loadpath}/{mapname}.txt', 'r') as f:
-        content = f.read()
-        # Convert string representation of list to actual list
-        points = eval(content)
-        #print(points)
-        # Since we have a single obstacle, we'll return it in the obstacleList format
-        obstacleList = points
-        #obstacleList = [[(x, y) for x, y in points]]
-        return obstacleList
-    
-def generateParticleGrid(numParticles,plotSize,gridSpacing):#particle generation
-    particleList = []
-    x_cap = plotSize[0] / gridSpacing
-    if x_cap > numParticles:
-        for i in range(numParticles):
-            x = i * gridSpacing
-            y = gridSpacing
-            particleList.append((x,y))
-    else:
-        y_offset = 1
-        rownum = 0
-        for i in range(numParticles):
-            if i // x_cap > rownum:
-                y_offset +=1
-                rownum +=1
-            x = i%x_cap * gridSpacing
-            y = y_offset * gridSpacing
-            particleList.append((x,y))
-    return particleList
-
-def readStartingPos(positionName,loadpath):
-    with open(f'{loadpath}/{positionName}.txt', 'r') as f:
-        content = f.read()
-        # Convert string representation of list to actual list
-        points = eval(content)
-        #print(points)
-        # Since we have a single obstacle, we'll return it in the obstacleList format
-        startingPos = points
-        #obstacleList = [[(x, y) for x, y in points]]
-        return startingPos
+from utils.helperfunctions import readMap,readStartingPos
 
 if __name__ == '__main__':
     try:
         numModel = int(sys.argv[1])
     except IndexError:
         numModel = 6
+        
     chain2 = []
     obstacles = [[(2,6),(6,6),(6,4),(2,4)]]
     #obstacles = []
     plotsize = (10,10)
     axesScaling = 0.75 #size of plot
     
-    save = False
-    results_path = "results"
-    savename = "opt_test.mp4"
-    frame_length = 3000
+    save = True
+    results_path = "demo_results"
+    savename = "thisWeek.mp4"
+    frame_length = 2500
 
     loadmap = True
     mapname = 'basic_1010'
@@ -73,14 +33,19 @@ if __name__ == '__main__':
 
     loadStartPos = False
     loadStartingPath = 'demo_starting_pos'
-    positionName = "edgepull"
+    positionName = "30_middle"
 
     mass = 1
     spring_constant = 200
-    gravity = 9.81
+    gravity = 4.4
     target_dist = 1.2
 
     trails = False
+    #[updateForces,updateForcesSquare,updateForcesString]
+    #[scanSurroundings,scanSurroundingsOccluded,scanSurroundingsDynamic]
+    updateForceMode = 'updateForces'
+    scanSurroundingsMode = 'scanSurroundingsDynamic'
+
     if loadmap:
         obstacles = readMap(mapname,loadpath)
 
@@ -88,14 +53,17 @@ if __name__ == '__main__':
         startingPoints = readStartingPos(positionName,loadStartingPath)
         numModel = len(startingPoints)
 
+    rowlength = 5
     for i in range(numModel):
             if loadStartPos:
                 chain2.append(Chain2(i,[startingPoints[i][0],startingPoints[i][1],0],plotSize=plotsize,
                                      obstacleList=obstacles,mass=mass,spring_constant=spring_constant,
-                                     gravity=gravity,target_dist=target_dist))
+                                     gravity=gravity,target_dist=target_dist,updateForceMode=updateForceMode,
+                                     scanSurroundingsMode=scanSurroundingsMode))
             else:
-                chain2.append(Chain2(i,[i%5*target_dist*0.75+plotsize[0]/2,i//5*target_dist*0.75,0],plotSize=plotsize,obstacleList=obstacles,mass=mass,
-                                     spring_constant=spring_constant,gravity=gravity,target_dist=target_dist))
+                chain2.append(Chain2(i,[i%rowlength*target_dist*0.75+plotsize[0]/4,i//rowlength/2,0],plotSize=plotsize,
+                                     obstacleList=obstacles,mass=mass,spring_constant=spring_constant,gravity=gravity,target_dist=target_dist,
+                                     updateForceMode=updateForceMode,scanSurroundingsMode=scanSurroundingsMode))
             
     x_limits = (0, plotsize[0])
     y_limits = (0, plotsize[1])
@@ -220,10 +188,15 @@ if __name__ == '__main__':
                 f.write(f"Simulation Parameters:\n")
                 f.write(f"------------------------------------\n")
                 f.write(f"Simulation Steps: {frame_length}\n")
+                if loadmap:
+                    f.write(f"Map: {loadpath}/{mapname}\n")
+                if loadStartPos:
+                    f.write(f"Starting POs: {loadStartingPath}/{positionName}\n")
                 f.write(f"Spring Constant: {spring_constant}\n")
                 f.write(f"Gravity: {gravity}\n")
                 f.write(f"Force Radius: {chain2[0].force_radius}\n")
                 f.write(f"Target Distance: {chain2[0].target_dist}\n")
+                f.write(f'Modes: {chain2[0].modes}\n')
                 
 
     plt.xlabel("X")

@@ -8,7 +8,7 @@ import numpy as np
 import sys
 import os
 from datetime import datetime
-from helperfunctions import readMap,generateParticleGrid,readStartingPos
+from utils.helperfunctions import readMap,generateParticleGrid,readStartingPos
 
 if __name__ == '__main__':
     try:

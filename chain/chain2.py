@@ -12,11 +12,14 @@ np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 #FBD-based chain
 class Chain2(Model):
     def __init__(self,id,startPos,plotSize,obstacleList = [],target_dist = 1.2,bond_factor = 0.4,
-                 observation_id = -5,mass = 1,spring_constant=200,gravity=9.81):
+                 observation_id = -5,mass = 1,spring_constant=200,gravity=9.81,updateForceMode = 'updateForces',scanSurroundingsMode='scanSurroundings'):
         self.mass = mass
         self.spring_constant = spring_constant
-        self.gravity = gravity * 1.5
-        force_radius = 1.2* target_dist
+        self.gravity = gravity * 2
+        if updateForceMode == "updateForcesSquare":
+            force_radius = 1.5* target_dist
+        else:
+            force_radius = 1.2* target_dist
         self.terminal_velocity = 5.0
         self.green_neighbours = []
         self.had_green_left = False
@@ -26,6 +29,7 @@ class Chain2(Model):
         #self.gravity = 0.0
         self.lastknownvector = np.zeros(0)
         self.min_movement_fraction = 0.5
+        self.modes=(scanSurroundingsMode,updateForceMode)
         super().__init__(id,startPos,plotSize,obstacleList,target_dist,movement_factor,bond_factor,
                  observation_id,force_radius=force_radius,deltaTime=0.02)
     
@@ -87,6 +91,10 @@ class Chain2(Model):
                     else:
                         self.state = 1
                         total_force[0] -= scaled_movement_factor * len(self.neighbours)
+
+                        #scale according to how far from edge
+                        #total_force[0] -= scaled_movement_factor * len(self.neighbours) * (1.0 + (self.position[0])/self.plotSize[0])
+
                         if not self.nearEdge(): #if not near edge, dont apply gravity
                             total_force -= gravity_force
 
@@ -105,6 +113,10 @@ class Chain2(Model):
                     else:
                         self.state = 1
                         total_force[0] += scaled_movement_factor * len(self.neighbours)
+
+                        #scale according to how far from edge
+                        #total_force[0] += scaled_movement_factor * len(self.neighbours) * (1.0 + (self.plotSize[0] - self.position[0])/self.plotSize[0])
+
                         if not self.nearEdge():
                             total_force -= gravity_force
                 #else: do nothing
@@ -136,6 +148,7 @@ class Chain2(Model):
         
         predictedPos =  self.position + self.velocity * self.deltaTime
         self.position = self.resolveCollisions(predictedPos)
+        #self.position = self.resolveCollisionswithMag(predictedPos)
         
         #end of move if green, record down neighbour positions
         if self.state == 0:
@@ -188,9 +201,14 @@ class Chain2(Model):
 
     def step(self,forceArr,globalComms):
         ###Select scanning method##########################################
-        #self.scanSurroundingsOccluded(globalComms)
-        self.scanSurroundings(globalComms)
-        #self.scanSurroundingsDynamic(globalComms,1.0-(self.id)/600)
+        if self.modes[0]=='scanSurroundings':
+            self.scanSurroundings(globalComms)
+        elif self.modes[0]=='scanSurroundingsOccluded':
+            self.scanSurroundingsOccluded(globalComms)
+        elif self.modes[0]=='scanSurroundingsDynamic':
+            self.scanSurroundingsDynamic(globalComms,1.0-(self.id)/600)
+        else:
+            print("Wrong scan surroundings mode!")
         ###################################################################
 
         ###Calculate spring forces
@@ -202,9 +220,14 @@ class Chain2(Model):
         ###################################################################
 
         ###Update forces based on new position  
-        self.updateForces(forceArr)
-        #self.updateForcesSquare(forceArr)
-        #self.updateForcesString(forceArr)
+        if self.modes[1]=='updateForces':
+            self.updateForces(forceArr)
+        elif self.modes[1]=='updateForcesSquare':
+            self.updateForcesSquare(forceArr)
+        elif self.modes[1]=='updateForcesString':
+            self.updateForcesString(forceArr)
+        else:
+            print("Wrong update force mode!")
         ###################################################################
         return        
    
