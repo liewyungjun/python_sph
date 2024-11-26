@@ -1,7 +1,6 @@
 import sys
 import os
 sys.path.append(os.path.abspath('../sph/'))
-print(sys.path)
 
 import math
 import numpy as np
@@ -12,7 +11,7 @@ np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 #FBD-based chain
 class Chain2(Model):
     def __init__(self,id,startPos,plotSize,obstacleList = [],target_dist = 1.2,bond_factor = 0.4,
-                 observation_id = -5,mass = 1,spring_constant=200,gravity=9.81,updateForceMode = 'updateForces',scanSurroundingsMode='scanSurroundings'):
+                 observation_id = -5,mass = 1,spring_constant=200,gravity=9.81,updateForceMode = 'updateForces',scanSurroundingsMode='scanSurroundings',collision_buffer=1.2):
         self.mass = mass
         self.spring_constant = spring_constant
         self.gravity = gravity * 2
@@ -30,7 +29,8 @@ class Chain2(Model):
         self.lastknownvector = np.zeros(0)
         self.min_movement_fraction = 0.5
         self.modes=(scanSurroundingsMode,updateForceMode)
-        super().__init__(id,startPos,plotSize,obstacleList,target_dist,movement_factor,bond_factor,
+        collision_buffer = collision_buffer
+        super().__init__(id,startPos,plotSize,collision_buffer,obstacleList,target_dist,movement_factor,bond_factor,
                  observation_id,force_radius=force_radius,deltaTime=0.02)
     
     def calculate_FBD(self,forceArr):
@@ -207,6 +207,10 @@ class Chain2(Model):
             self.scanSurroundingsOccluded(globalComms)
         elif self.modes[0]=='scanSurroundingsDynamic':
             self.scanSurroundingsDynamic(globalComms,1.0-(self.id)/600)
+        elif self.modes[0]=='scanSurroundingsOccludedDynamic':
+            self.scanSurroundingsOccludedDynamic(globalComms,1.0-(self.id)/600)
+        elif self.modes[0]=='scanSurroundingsOccludedDynamicString':
+            self.scanSurroundingsOccludedDynamicString(globalComms,1.0-(self.id)/600)
         else:
             print("Wrong scan surroundings mode!")
         ###################################################################

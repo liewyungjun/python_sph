@@ -177,6 +177,50 @@ class Model:
             if dist > self.force_radius * radius_percentage:
                 self.removeNeighbour(i)
         return
+        
+    def scanSurroundingsOccludedDynamic(self,globalComms,radius_percentage):
+        #alternative, scan surroundings will change the radius to introduce manufacturing defects + occlusion
+        #globalComms is an array [id,state,posx,posy,poz]
+        for i in globalComms:
+            if i[0] == self.id:
+                continue
+            deltax = self.position[0] - i[2]
+            deltay = self.position[1] - i[3]
+            deltaz = self.position[2] - i[4]
+            dist = math.sqrt(deltax*deltax + deltay*deltay + deltaz*deltaz)
+            if dist < self.force_radius * radius_percentage:
+                if self.checkOcclusion(i) or dist < 0.5:
+                    self.addNeighbour(i)
+                else:
+                    self.removeNeighbour(i) 
+            if dist > self.force_radius * radius_percentage:
+                self.removeNeighbour(i)
+        return
+    
+    def scanSurroundingsOccludedDynamicString(self,globalComms,radius_percentage):
+        #alternative, scan surroundings will change the radius to introduce manufacturing defects + occlusion
+        #globalComms is an array [id,state,posx,posy,poz]
+        neighbourList = []
+        for i in globalComms:
+            if i[0] == self.id:
+                continue
+            deltax = self.position[0] - i[2]
+            deltay = self.position[1] - i[3]
+            deltaz = self.position[2] - i[4]
+            dist = math.sqrt(deltax*deltax + deltay*deltay + deltaz*deltaz)
+            if dist < self.force_radius * radius_percentage:
+                if self.checkOcclusion(i) or dist < 0.5:
+                    neighbourList.append((i,dist))
+                else:
+                    self.removeNeighbour(i) 
+            if dist > self.force_radius * radius_percentage:
+                self.removeNeighbour(i)
+        neighbourList.sort(key=lambda x: x[1])
+        for j in range(3):
+            if j == len(neighbourList):
+                return
+            self.addNeighbour(neighbourList[j][0])
+        return
     
     def resolveCollisions(self,predictedPos):
         collision_buffer = self.collision_buffer
@@ -205,6 +249,9 @@ class Model:
                     else:
                         predictedPos[0] = self.position[0]
                         self.velocity[0] = 0.0
+                        if self.state == 1:
+                            self.velocity[1] = self.movement_factor * self.deltaTime
+                            predictedPos[1] = self.position[1] + self.velocity[1] * self.deltaTime
                 if precollisionx and not precollisiony:
                 #if collisiony:
                     if self.gravityOn:
@@ -213,6 +260,13 @@ class Model:
                     else:
                         predictedPos[1] = self.position[1]
                         self.velocity[1] = 0.0
+                        if self.state == 1 or self.state == 0 or self.state == 2:
+                            sign = 1 if self.id %2 == 0 else -1
+                            self.velocity[0] = self.movement_factor * self.deltaTime * sign
+                            predictedPos[0] = self.position[0] + self.velocity[0] * self.deltaTime
+                if not precollisionx and not precollisiony:
+                    self.velocity = np.zeros(3)
+                    predictedPos = self.position
         return np.array([predictedPos[0],predictedPos[1],0])
     
     def resolveCollisionswithMag(self,predictedPos):
