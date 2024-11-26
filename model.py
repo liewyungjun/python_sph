@@ -5,7 +5,7 @@ import numpy as np
 
 #FBD-based chain
 class Model:
-    def __init__(self,id,startPos,plotSize,obstacleList = [],target_dist = 1.2,movement_factor = 0.05,bond_factor = 0.4,
+    def __init__(self,id,startPos,plotSize,collision_buffer, obstacleList = [],target_dist = 1.2,movement_factor = 0.05,bond_factor = 0.4,
                  observation_id = -4,force_radius = 1.4,deltaTime = 0.02):
         self.neighbours = {} #dict of {id:[state,posx,posy,posz]}
         self.velocity = np.array([0.0,0.0,0.0])
@@ -25,6 +25,7 @@ class Model:
         self.movement_factor = movement_factor
         self.bond_factor = bond_factor
         self.observation_id = observation_id
+        self.collision_buffer = collision_buffer
     
     def calculateForce(self): #calculate bondforces based on neighbours
         totalforce = np.array([0.0,0.0,0.0])
@@ -178,6 +179,9 @@ class Model:
         return
     
     def resolveCollisions(self,predictedPos):
+        collision_buffer = self.collision_buffer
+        #collision_buffer = 0.2
+        #collision_buffer = 0
         # Check for collision with side walls
         if predictedPos[0] > self.plotSize[0] or predictedPos[0]<0.0:
             predictedPos[0] = self.position[0]
@@ -187,10 +191,10 @@ class Model:
             predictedPos[1] = self.position[1]
             self.velocity[1] = 0.0
         for i in self.obstacleList:
-            precollisionx = self.position[0]>i[0][0] and self.position[0]<i[1][0]
-            precollisiony = self.position[1]<i[0][1] and self.position[1]>i[3][1]
-            collisionx = predictedPos[0]>i[0][0] and predictedPos[0]<i[1][0]
-            collisiony = predictedPos[1]<i[0][1] and predictedPos[1]>i[3][1]
+            precollisionx = self.position[0]>i[0][0]-collision_buffer and self.position[0]<i[1][0] + collision_buffer
+            precollisiony = self.position[1]<i[0][1] +collision_buffer and self.position[1]>i[3][1] -collision_buffer
+            collisionx = predictedPos[0]>i[0][0]-collision_buffer and predictedPos[0]<i[1][0] + collision_buffer
+            collisiony = predictedPos[1]<i[0][1] +collision_buffer and predictedPos[1]>i[3][1] -collision_buffer
             if collisionx and collisiony:
                 #inside rectangle
                 if not precollisionx and precollisiony:

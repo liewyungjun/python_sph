@@ -22,7 +22,7 @@ if __name__ == '__main__':
     plotsize = (10,10)
     axesScaling = 0.75 #size of plot
     
-    save = True
+    save = False
     results_path = "demo_results"
     savename = "thisWeek.mp4"
     frame_length = 2500
@@ -35,16 +35,20 @@ if __name__ == '__main__':
     loadStartingPath = 'demo_starting_pos'
     positionName = "30_middle"
 
+    rowlength = 5
+
     mass = 1
     spring_constant = 200
     gravity = 4.4
     target_dist = 1.2
 
-    trails = False
+    trails = True
+    collision_buffer = target_dist/4
+
     #[updateForces,updateForcesSquare,updateForcesString]
-    #[scanSurroundings,scanSurroundingsOccluded,scanSurroundingsDynamic]
+    #[scanSurroundings,scanSurroundingsOccluded,scanSurroundingsDynamic,scanSurroundingsOccludedDynamic,scanSurroundingsOccludedDynamicString]
     updateForceMode = 'updateForces'
-    scanSurroundingsMode = 'scanSurroundingsDynamic'
+    scanSurroundingsMode = 'scanSurroundingsOccludedDynamic'
 
     if loadmap:
         obstacles = readMap(mapname,loadpath)
@@ -53,17 +57,17 @@ if __name__ == '__main__':
         startingPoints = readStartingPos(positionName,loadStartingPath)
         numModel = len(startingPoints)
 
-    rowlength = 5
+    
     for i in range(numModel):
             if loadStartPos:
                 chain2.append(Chain2(i,[startingPoints[i][0],startingPoints[i][1],0],plotSize=plotsize,
                                      obstacleList=obstacles,mass=mass,spring_constant=spring_constant,
                                      gravity=gravity,target_dist=target_dist,updateForceMode=updateForceMode,
-                                     scanSurroundingsMode=scanSurroundingsMode))
+                                     scanSurroundingsMode=scanSurroundingsMode,collision_buffer=collision_buffer))
             else:
                 chain2.append(Chain2(i,[i%rowlength*target_dist*0.75+plotsize[0]/4,i//rowlength/2,0],plotSize=plotsize,
                                      obstacleList=obstacles,mass=mass,spring_constant=spring_constant,gravity=gravity,target_dist=target_dist,
-                                     updateForceMode=updateForceMode,scanSurroundingsMode=scanSurroundingsMode))
+                                     updateForceMode=updateForceMode,scanSurroundingsMode=scanSurroundingsMode,collision_buffer=collision_buffer))
             
     x_limits = (0, plotsize[0])
     y_limits = (0, plotsize[1])
@@ -98,7 +102,11 @@ if __name__ == '__main__':
 
     for obstacle in obstacles:
         polygon = Polygon(obstacle, fill=True, facecolor='gray')
+        inflation = [[obstacle[0][0]-collision_buffer, obstacle[0][1]+collision_buffer], [obstacle[1][0]+collision_buffer, obstacle[1][1]+collision_buffer], 
+                 [obstacle[2][0]+collision_buffer, obstacle[2][1]-collision_buffer], [obstacle[3][0]-collision_buffer, obstacle[3][1]-collision_buffer]]
+        outline = Polygon(inflation, fill=False, facecolor='gray')
         ax.add_patch(polygon)
+        ax.add_patch(outline)
     
     state_colors = ['green', 'blue', 'brown','red','purple']
 
