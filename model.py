@@ -6,7 +6,7 @@ import numpy as np
 #FBD-based chain
 class Model:
     def __init__(self,id,startPos,plotSize,collision_buffer, obstacleList = [],target_dist = 1.2,movement_factor = 0.05,bond_factor = 0.4,
-                 observation_id = -4,force_radius = 1.4,deltaTime = 0.02):
+                 observation_id = -4,force_radius = 1.4,deltaTime = 0.02,plotFloor = 0.0):
         self.neighbours = {} #dict of {id:[state,posx,posy,posz]}
         self.velocity = np.array([0.0,0.0,0.0])
         self.position = np.array(startPos)
@@ -26,6 +26,7 @@ class Model:
         self.bond_factor = bond_factor
         self.observation_id = observation_id
         self.collision_buffer = collision_buffer
+        self.plotFloor = plotFloor
     
     def calculateForce(self): #calculate bondforces based on neighbours
         totalforce = np.array([0.0,0.0,0.0])
@@ -231,7 +232,7 @@ class Model:
             predictedPos[0] = self.position[0]
             self.velocity[0] = 0.0
         # Check for collision with ground and top
-        if (predictedPos[1]) < 0.0 or predictedPos[1] > self.plotSize[1]:
+        if (predictedPos[1]) < self.plotFloor or predictedPos[1] > self.plotSize[1]:
             predictedPos[1] = self.position[1]
             self.velocity[1] = 0.0
         for i in self.obstacleList:
@@ -260,10 +261,10 @@ class Model:
                     else:
                         predictedPos[1] = self.position[1]
                         self.velocity[1] = 0.0
-                        if self.state == 1 or self.state == 0 or self.state == 2:
-                            sign = 1 if self.id %2 == 0 else -1
-                            self.velocity[0] = self.movement_factor * self.deltaTime * sign
-                            predictedPos[0] = self.position[0] + self.velocity[0] * self.deltaTime
+                        #if self.state == 1 or self.state == 0 or self.state == 2:
+                            # sign = 1 if self.id %2 == 0 else -1
+                            # self.velocity[0] = self.movement_factor * self.deltaTime * sign
+                            # predictedPos[0] = self.position[0] + self.velocity[0] * self.deltaTime
                 if not precollisionx and not precollisiony:
                     self.velocity = np.zeros(3)
                     predictedPos = self.position
