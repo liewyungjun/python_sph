@@ -10,9 +10,10 @@ from shapely.geometry import Polygon
 
 np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 
-class Voronoi_Decentralised(Model):
-    def __init__(self,id,position,deltaTime,plotSize,movement_factor,comms_radius,collision_buffer,obstacleList,numAgents):
-        self.plotSize = plotSize
+class Voronoi_Decentralised2(Model):
+    def __init__(self,id,position,deltaTime,plotSize,plotFigSize,movement_factor,comms_radius,collision_buffer,obstacleList,numAgents):
+        self.plotSize = plotSize #allowable movement space
+        self.plotFigSize = plotFigSize #total fig size
         self.movement_factor = movement_factor
         self.neighbours = np.array([])
         self.velocity = np.array([0.0,0.0,0.0])
@@ -33,7 +34,7 @@ class Voronoi_Decentralised(Model):
             points * [-1, 1,1],  # reflect across x=0
             [[x[0],2 * self.plotFloor-x[1],x[2]] for x in points ], #reflect across y  = floor
             [[2 * self.plotSize[0] -x[0],x[1],x[2]] for x in points ], #reflect across x = max
-            [[x[0],2 * self.plotSize[1]-x[1],x[2]] for x in points ] # reflect across y = max
+            [[x[0],2 * self.plotFigSize[1]-x[1],x[2]] for x in points ] # reflect across y = max
         ])
         reflected_points = np.delete(reflected_points, [2], axis=1)
         vor = Voronoi(reflected_points)
@@ -46,7 +47,7 @@ class Voronoi_Decentralised(Model):
                     curX = vor.vertices[i][0]
                     curY = vor.vertices[i][1]
                     vor.vertices[i][0] = min(max(curX,0),self.plotSize[0])
-                    vor.vertices[i][1] = min(max(curY,0),self.plotSize[1])
+                    vor.vertices[i][1] = min(max(curY,0),self.plotFigSize[1])
         polygon = [vor.vertices[i] for i in region_points]
         self.region = polygon
         if len(polygon) > 0:
@@ -63,16 +64,38 @@ class Voronoi_Decentralised(Model):
         self.scanSurroundingsOccluded(comms)
         #centroid_target = [[x[0],x[1],0] for x in self.getVoronoiCentroid()]
         centroid_target =self.getVoronoiCentroid()
-        centroid_target = np.array([centroid_target[0],centroid_target[1],0])
+        centroid_target = np.array([centroid_target[0],min(self.plotSize[1],centroid_target[1]),0])
         # print(centroid_target)
         # print(self.position)
         self.velocity = (centroid_target - self.position) * self.movement_factor * self.deltaTime
         self.position = self.resolveCollisions(self.position + self.velocity)
         #comms[self.id] = self.sendComms()
-        if self.regionSize < 2 * (self.plotSize[1]-self.plotFloor) * self.plotSize[0] / self.numAgents and \
-            self.position[1] > self.plotFloor + 0.2:
-            self.plotSize[1] = min(10.0,self.plotSize[1]+0.1)
-            self.plotFloor = min(7.0,self.plotFloor+0.1)
-            #print(self.plotSize[1])
-            #print(self.plotFloor)
+        
+        #TODO: refine the level movement heuristic###################
+        neighbour_y = [x[2] for x in self.neighbours.values()]
+        has_lower_neighbors = False
+        if len(neighbour_y) > 0:
+            lowest_neighbour = min(neighbour_y)
+            if lowest_neighbour < self.position[1]:
+                has_lower_neighbors = True
+            highest_neighbour = max(neighbour_y)
 
+        #rear guard code####################
+        if not has_lower_neighbors and self.position[1] > self.plotFloor + 0.2:
+            self.plotFloor =min(7.0,self.plotFloor+0.1)
+        
+        #frontline code######################
+        if (self.plotSize[1] - self.position[1]) < 1.0:
+            if len(self.neighbours.keys()) > 0:
+                density_value = sum((np.linalg.norm(self.position - neighbor_pos[1:]) + 1e-6) \
+                                    for neighbor_pos in self.neighbours.values())/len(self.neighbours.keys())
+            else:
+                density_value = float('inf')
+            #print(f'{self.id}:density value is {density_value}')
+            if density_value < 4.0:
+                self.plotSize[1] = min(10.0,self.plotSize[1]+0.1)
+
+        # self.plotFloor = max(self.plotFloor, lowest_neighbour)
+        if len(neighbour_y) > 0:
+            self.plotSize[1] = min(10,max(self.plotSize[1],highest_neighbour))
+        ##############################################################

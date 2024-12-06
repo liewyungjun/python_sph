@@ -1,5 +1,5 @@
 from matplotlib.collections import LineCollection
-from voronoi_decentralised import Voronoi_Decentralised
+from voronoi_decentralised2 import Voronoi_Decentralised2
 import time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -16,24 +16,24 @@ if __name__ == '__main__':
     except IndexError:
         numModel = 6
         
-    VoronoiDecentralised = []
+    VoronoiDecentralised2 = []
     obstacles = [[(2,6),(6,6),(6,4),(2,4)]]
     obstacles = []
     plotfigsize = [10,10] #for plotting purposes
-    plotSize = [10,3] #voronoi consideration bounds (aka bound level)
+    plotSize = [10,5] #voronoi consideration bounds (aka bound level)
     axesScaling = 0.75 #size of plot
     deltaTime = 0.02
     movement_factor = 0.5
-    #comms_radius = 12.0
+    comms_radius = 12.0
     comms_radius = 2.0
     collision_buffer = 0.5
     
     save = False
-    results_path = "demo_results"
-    savename = "voronoi.mp4"
-    frame_length = 3000
+    results_path = "results"
+    savename = "Voronoi_6drones_global_basic.mp4"
+    frame_length = 2500
 
-    loadmap = False
+    loadmap = True
     mapname = 'basic_1010'
     loadpath = "maps"
 
@@ -46,6 +46,7 @@ if __name__ == '__main__':
     mass = 1
 
     trails = False
+    voronoi_markings = True
 
     if loadmap:
         obstacles = readMap(mapname,loadpath)
@@ -57,12 +58,12 @@ if __name__ == '__main__':
     
     for i in range(numModel):
             if loadStartPos:
-                VoronoiDecentralised.append(Voronoi_Decentralised(i,[startingPoints[i][0],startingPoints[i][1],0],deltaTime=deltaTime,
-                                                                  plotSize=[plotSize[0],plotSize[1]],movement_factor=movement_factor,
+                VoronoiDecentralised2.append(Voronoi_Decentralised2(i,[startingPoints[i][0],startingPoints[i][1],0],deltaTime=deltaTime,
+                                                                  plotSize=[plotSize[0],plotSize[1]],plotFigSize = plotfigsize,movement_factor=movement_factor,
                                                                   comms_radius=comms_radius,collision_buffer=collision_buffer,obstacleList=obstacles,numAgents=numModel))
             else:
-                VoronoiDecentralised.append(Voronoi_Decentralised(i,[i%rowlength*1*0.75+plotfigsize[0]/4,i//rowlength/2 + 0.2,0],deltaTime=deltaTime,
-                                                                  plotSize=[plotSize[0],plotSize[1]],movement_factor=movement_factor,
+                VoronoiDecentralised2.append(Voronoi_Decentralised2(i,[i%rowlength*1*0.75+plotfigsize[0]/4,i//rowlength/2 + 0.2,0],deltaTime=deltaTime,
+                                                                  plotSize=[plotSize[0],plotSize[1]],plotFigSize = plotfigsize,movement_factor=movement_factor,
                                                                   comms_radius=comms_radius,collision_buffer=collision_buffer,obstacleList=obstacles,numAgents=numModel))
             
     x_limits = (0, plotfigsize[0])
@@ -84,8 +85,10 @@ if __name__ == '__main__':
     globalcomms = [[] for i in range(numModel)]
     connections_lines = []
     regions = []
-    floorLines = [ax.axhline(y=x.plotFloor, color='red', linestyle='-',alpha=0.2) for x in VoronoiDecentralised]
-    boundLines = [ax.axhline(y=x.plotSize[1], color='blue', linestyle='-',alpha=0.2) for x in VoronoiDecentralised]
+    floorLines,boundLines = [],[]
+    if voronoi_markings:
+        floorLines = [ax.axhline(y=x.plotFloor, color='red', linestyle='-',alpha=0.2) for x in VoronoiDecentralised2]
+        boundLines = [ax.axhline(y=x.plotSize[1], color='blue', linestyle='-',alpha=0.2) for x in VoronoiDecentralised2]
     voronoi_polygons = [[] for i in range(numModel)]
 
     texts = []
@@ -124,12 +127,12 @@ if __name__ == '__main__':
             lines.remove()
         connections_lines = []
         for i in range(numModel):
-            globalcomms[i] = VoronoiDecentralised[i].sendComms()
+            globalcomms[i] = VoronoiDecentralised2[i].sendComms()
 
         comms_time = time.time()
 
         for i in range(numModel):
-            VoronoiDecentralised[i].step(globalcomms)
+            VoronoiDecentralised2[i].step(globalcomms)
 
         steps_time = time.time()
         
@@ -139,8 +142,8 @@ if __name__ == '__main__':
             text.remove()
         texts = []
         
-        positions_x = [VoronoiDecentralised[i].position[0] for i in range(numModel)]
-        positions_y = [VoronoiDecentralised[i].position[1] for i in range(numModel)]
+        positions_x = [VoronoiDecentralised2[i].position[0] for i in range(numModel)]
+        positions_y = [VoronoiDecentralised2[i].position[1] for i in range(numModel)]
         
         # Update all particle positions at once
         global floorLines
@@ -148,21 +151,22 @@ if __name__ == '__main__':
         global voronoi_polygons
         for i in range(numModel):
             modelaxs[i].set_data([positions_x[i]], [positions_y[i]])
-            modelaxs[i].set_color(state_colors[VoronoiDecentralised[i].state])
+            modelaxs[i].set_color(state_colors[VoronoiDecentralised2[i].state])
             #TODO: use enumerate to do all of this at once
-            floorLines[i].set_ydata([VoronoiDecentralised[i].plotFloor])
-            boundLines[i].set_ydata([VoronoiDecentralised[i].plotSize[1]])
-            # texts.append(ax.text(0.1, VoronoiDecentralised[i].plotFloor+0.1, str(i), ha='center', va='bottom'))        
-            # texts.append(ax.text(0.1, VoronoiDecentralised[i].plotSize[1]+0.1, str(i), ha='center', va='bottom'))        
+            if voronoi_markings:
+                floorLines[i].set_ydata([VoronoiDecentralised2[i].plotFloor])
+                boundLines[i].set_ydata([VoronoiDecentralised2[i].plotSize[1]])
+            # texts.append(ax.text(0.1, VoronoiDecentralised2[i].plotFloor+0.1, str(i), ha='center', va='bottom'))        
+            # texts.append(ax.text(0.1, VoronoiDecentralised2[i].plotSize[1]+0.1, str(i), ha='center', va='bottom'))        
             # Plot Voronoi region as polygon
-            if VoronoiDecentralised[i].region is not None and len(VoronoiDecentralised[i].region) > 0:
-                # fill=True, alpha=0.2, color=state_colors[VoronoiDecentralised[i].state])
-                voronoi_polygons[i].set_xy(VoronoiDecentralised[i].region)
+            if VoronoiDecentralised2[i].region is not None and len(VoronoiDecentralised2[i].region) > 0 and voronoi_markings:
+                # fill=True, alpha=0.2, color=state_colors[VoronoiDecentralised2[i].state])
+                voronoi_polygons[i].set_xy(VoronoiDecentralised2[i].region)
             
         posState_time = time.time()
         
         # Create all text labels at once
-        texts = [ax.text(x, y+0.2, str(VoronoiDecentralised[i].id), ha='center', va='bottom') 
+        texts = [ax.text(x, y+0.2, str(VoronoiDecentralised2[i].id), ha='center', va='bottom') 
                 for i, (x, y) in enumerate(zip(positions_x, positions_y))]
         
         text_time = time.time()
@@ -175,7 +179,7 @@ if __name__ == '__main__':
                 trajs[i].set_data(traj_hist[i][0], traj_hist[i][1])
         
         # Create all connection lines at once
-        neighbor_pairs = [(i, n) for i in range(numModel) for n in VoronoiDecentralised[i].neighbours]
+        neighbor_pairs = [(i, n) for i in range(numModel) for n in VoronoiDecentralised2[i].neighbours]
         segments = np.array([[(positions_x[i], positions_y[i]), 
                             (positions_x[j], positions_y[j])] for i, j in neighbor_pairs])
         connections_lines = [LineCollection(segments, colors='g', alpha=0.3)]
@@ -184,12 +188,12 @@ if __name__ == '__main__':
         end_time = time.time()
    
         print(f'{frame}-------------')
-        print(f'Time taken: {end_time - start_time} seconds')
-        print(f'Comms time: {comms_time - start_time} seconds')
-        print(f'Steps time: {steps_time - comms_time} seconds')
-        print(f'Draw time: {end_time - steps_time} seconds')
-        print(f'posState time: {posState_time - steps_time} seconds')
-        print(f'text time: {text_time - posState_time} seconds')
+        # print(f'Time taken: {end_time - start_time} seconds')
+        # print(f'Comms time: {comms_time - start_time} seconds')
+        # print(f'Steps time: {steps_time - comms_time} seconds')
+        # print(f'Draw time: {end_time - steps_time} seconds')
+        # print(f'posState time: {posState_time - steps_time} seconds')
+        # print(f'text time: {text_time - posState_time} seconds')
         #print(f'lines time: {lines_time - text_time} seconds')
         #time.sleep(0.2)    
         return modelaxs + connections_lines + texts + trajs + floorLines + boundLines + voronoi_polygons
@@ -220,11 +224,9 @@ if __name__ == '__main__':
                     f.write(f"Map: {loadpath}/{mapname}\n")
                 if loadStartPos:
                     f.write(f"Starting POs: {loadStartingPath}/{positionName}\n")
-                f.write(f"Spring Constant: {spring_constant}\n")
-                f.write(f"Gravity: {gravity}\n")
-                f.write(f"Force Radius: {VoronoiDecentralised[0].force_radius}\n")
-                f.write(f"Target Distance: {VoronoiDecentralised[0].target_dist}\n")
-                f.write(f'Modes: {VoronoiDecentralised[0].modes}\n')
+                f.write(f"Comms Radius: {VoronoiDecentralised2[0].force_radius}\n")
+                # f.write(f"Target Distance: {VoronoiDecentralised2[0].target_dist}\n")
+                # f.write(f'Modes: {VoronoiDecentralised2[0].modes}\n')
                 
 
     plt.xlabel("X")

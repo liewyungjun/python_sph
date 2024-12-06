@@ -12,7 +12,7 @@ class Model:
         self.position = np.array(startPos)
         self.acceleration = np.zeros(3)
         self.id = id
-        self.plotSize = plotSize
+        self.plotSize = plotSize #(xMax,yMax)
         self.obstacleList = obstacleList
         self.bondForce = np.array([0.0,0.0,0.0])
         self.movementForce = np.array([0.0,0.0,0.0])
@@ -26,7 +26,7 @@ class Model:
         self.bond_factor = bond_factor
         self.observation_id = observation_id
         self.collision_buffer = collision_buffer
-        self.plotFloor = plotFloor
+        self.plotFloor = plotFloor #for resolve collision floor
     
     def calculateForce(self): #calculate bondforces based on neighbours
         totalforce = np.array([0.0,0.0,0.0])
