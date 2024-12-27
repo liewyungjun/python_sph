@@ -17,6 +17,7 @@ class Voronoi_Decentralised2(Model):
         self.movement_factor = movement_factor
         self.neighbours = np.array([])
         self.velocity = np.array([0.0,0.0,0.0])
+        self.centroid_target = np.array([0.0,0.0,0.0])
         self.regionSize = 0.0
         self.numAgents = numAgents
         self.region = []
@@ -62,12 +63,13 @@ class Voronoi_Decentralised2(Model):
 
     def step(self,comms):
         self.scanSurroundingsOccluded(comms)
+        #self.scanSurroundings(comms)
         #centroid_target = [[x[0],x[1],0] for x in self.getVoronoiCentroid()]
-        centroid_target =self.getVoronoiCentroid()
-        centroid_target = np.array([centroid_target[0],min(self.plotSize[1],centroid_target[1]),0])
+        self.centroid_target =self.getVoronoiCentroid()
+        self.centroid_target = np.array([self.centroid_target[0],min(self.plotSize[1],self.centroid_target[1]+0.2),0])
         # print(centroid_target)
         # print(self.position)
-        self.velocity = (centroid_target - self.position) * self.movement_factor * self.deltaTime
+        self.velocity = (self.centroid_target - self.position) * self.movement_factor * self.deltaTime
         self.position = self.resolveCollisions(self.position + self.velocity)
         #comms[self.id] = self.sendComms()
         
@@ -85,7 +87,11 @@ class Voronoi_Decentralised2(Model):
             self.plotFloor =min(7.0,self.plotFloor+0.1)
         
         #frontline code######################
+        at_front = False
+        density_reached = False
         if (self.plotSize[1] - self.position[1]) < 1.0:
+            at_front = True
+            #print(f'{self.id} at front')
             if len(self.neighbours.keys()) > 0:
                 density_value = sum((np.linalg.norm(self.position - neighbor_pos[1:]) + 1e-6) \
                                     for neighbor_pos in self.neighbours.values())/len(self.neighbours.keys())
@@ -93,9 +99,23 @@ class Voronoi_Decentralised2(Model):
                 density_value = float('inf')
             #print(f'{self.id}:density value is {density_value}')
             if density_value < 4.0:
-                self.plotSize[1] = min(10.0,self.plotSize[1]+0.1)
+                density_reached = True
+                self.plotSize[1] = min(self.plotFigSize[1],self.plotSize[1]+0.1)
+                #print(f'{self.id} increasing')
 
-        # self.plotFloor = max(self.plotFloor, lowest_neighbour)
+        
         if len(neighbour_y) > 0:
             self.plotSize[1] = min(10,max(self.plotSize[1],highest_neighbour))
+        if has_lower_neighbors:
+            self.plotFloor = min(7.0,max(self.plotFloor, lowest_neighbour))
         ##############################################################
+
+        if not has_lower_neighbors:
+            self.state = 1
+        elif at_front:
+            if density_reached:
+                self.state = 3
+            else:
+                self.state = 2
+        else:
+            self.state = 0

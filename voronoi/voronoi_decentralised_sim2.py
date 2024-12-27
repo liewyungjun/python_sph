@@ -20,21 +20,21 @@ if __name__ == '__main__':
     obstacles = [[(2,6),(6,6),(6,4),(2,4)]]
     obstacles = []
     plotfigsize = [10,10] #for plotting purposes
-    plotSize = [10,5] #voronoi consideration bounds (aka bound level)
+    plotSize = [10,2] #voronoi consideration bounds (aka bound level)
     axesScaling = 0.75 #size of plot
     deltaTime = 0.02
     movement_factor = 0.5
     comms_radius = 12.0
-    comms_radius = 2.0
-    collision_buffer = 0.5
+    #comms_radius = 2.0
+    collision_buffer = 0.02
     
     save = False
     results_path = "results"
-    savename = "Voronoi_6drones_global_basic.mp4"
+    savename = "Voronoi_6drones_global_sparse.mp4"
     frame_length = 2500
 
     loadmap = True
-    mapname = 'basic_1010'
+    mapname = 'sparse_chain'
     loadpath = "maps"
 
     loadStartPos = False
@@ -86,15 +86,19 @@ if __name__ == '__main__':
     connections_lines = []
     regions = []
     floorLines,boundLines = [],[]
+    centroidtargets = []
     if voronoi_markings:
         floorLines = [ax.axhline(y=x.plotFloor, color='red', linestyle='-',alpha=0.2) for x in VoronoiDecentralised2]
         boundLines = [ax.axhline(y=x.plotSize[1], color='blue', linestyle='-',alpha=0.2) for x in VoronoiDecentralised2]
+        for i in range(numModel):
+            centroidtargets.append(ax.plot([], [], 'o', mfc='none', mec='b')[0])
     voronoi_polygons = [[] for i in range(numModel)]
 
     texts = []
     trajs = []
     traj_hist = []
     modelaxs = []
+    
     velocity_arrows = []
     forceArr  = [[np.array([0.0,0.0,0.0]) for i in range(numModel)] for j in range(numModel)]
 
@@ -117,7 +121,7 @@ if __name__ == '__main__':
     
     
     
-    state_colors = ['green', 'blue', 'brown','red','purple']
+    state_colors = ['green','blue','red','brown','purple']
 
     def update(frame):
         start_time = time.time()
@@ -144,6 +148,8 @@ if __name__ == '__main__':
         
         positions_x = [VoronoiDecentralised2[i].position[0] for i in range(numModel)]
         positions_y = [VoronoiDecentralised2[i].position[1] for i in range(numModel)]
+        centroid_positions_x = [VoronoiDecentralised2[i].centroid_target[0] for i in range(numModel)]
+        centroid_positions_y = [VoronoiDecentralised2[i].centroid_target[1] for i in range(numModel)]
         
         # Update all particle positions at once
         global floorLines
@@ -154,6 +160,7 @@ if __name__ == '__main__':
             modelaxs[i].set_color(state_colors[VoronoiDecentralised2[i].state])
             #TODO: use enumerate to do all of this at once
             if voronoi_markings:
+                centroidtargets[i].set_data([centroid_positions_x[i]], [centroid_positions_y[i]])
                 floorLines[i].set_ydata([VoronoiDecentralised2[i].plotFloor])
                 boundLines[i].set_ydata([VoronoiDecentralised2[i].plotSize[1]])
             # texts.append(ax.text(0.1, VoronoiDecentralised2[i].plotFloor+0.1, str(i), ha='center', va='bottom'))        
@@ -196,7 +203,7 @@ if __name__ == '__main__':
         # print(f'text time: {text_time - posState_time} seconds')
         #print(f'lines time: {lines_time - text_time} seconds')
         #time.sleep(0.2)    
-        return modelaxs + connections_lines + texts + trajs + floorLines + boundLines + voronoi_polygons
+        return modelaxs + connections_lines + texts + trajs + floorLines + boundLines + voronoi_polygons + centroidtargets
     anim = animation.FuncAnimation(fig, update, frames=frame_length, interval=0.02 * 1000, blit=True,repeat=False)
 
     if save:
